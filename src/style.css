@@ -1,4 +1,433 @@
-:root{font-family:Montserrat,system-ui,sans-serif;color:#fff;background:#080705;font-synthesis:none;--gold:#e7b84f;--dark:#090806;--glass:rgba(10,9,7,.82)}*{box-sizing:border-box}body{margin:0;overflow:hidden}button{font:inherit;color:inherit;cursor:pointer}#app,#world{position:fixed;inset:0;width:100%;height:100%}#world{background:linear-gradient(#20466d,#e3a96e)}.glass{background:var(--glass);border:1px solid rgba(231,184,79,.3);box-shadow:0 12px 40px #0008;backdrop-filter:blur(14px)}.topbar{position:fixed;z-index:3;top:0;left:0;right:0;min-height:74px;padding:max(12px,env(safe-area-inset-top)) 18px 10px;display:flex;align-items:center;justify-content:space-between;border-width:0 0 1px}.brand{display:flex;align-items:center;gap:10px}.brand strong{font-family:'Playfair Display',serif;color:var(--gold);letter-spacing:1px}.brand small{display:block;font-size:8px;letter-spacing:3px}.crown{font-size:30px;color:var(--gold)}.wallet{display:flex;gap:10px}.wallet span{background:#0008;border-radius:20px;padding:8px 10px;font-size:12px}.wallet b{color:var(--gold)}.location{position:fixed;z-index:2;top:90px;left:18px;padding:12px 15px;border-radius:12px;width:220px}.location small{color:var(--gold);letter-spacing:2px}.location strong{display:block;font-size:18px;margin:2px 0 8px}.location span{font-size:9px;letter-spacing:1px}.xp{height:4px;background:#ffffff22;border-radius:4px;overflow:hidden}.xp i{display:block;height:100%;width:12%;background:var(--gold)}.mission{position:fixed;z-index:2;top:90px;right:18px;width:min(340px,calc(100% - 36px));padding:15px;border-radius:14px}.mission small{color:var(--gold);letter-spacing:2px}.mission strong{display:block;margin-top:5px}.mission p{font-size:12px;line-height:1.5;color:#ddd}.mission div{display:flex;align-items:center;justify-content:space-between;font-size:10px}.mission button,.action-stack button,.panel button{border:1px solid var(--gold);background:linear-gradient(135deg,#7a5618,#d7a73c);padding:8px 12px;border-radius:8px;font-weight:900}.nav{position:fixed;z-index:4;bottom:0;left:0;right:0;height:78px;padding-bottom:env(safe-area-inset-bottom);display:flex;align-items:center;justify-content:space-around;border-width:1px 0 0}.nav button{border:0;background:none;color:#aaa;font-size:9px;text-transform:uppercase;min-width:58px}.nav span{display:block;font-size:22px;margin-bottom:4px}.nav .play{height:72px;width:72px;margin-top:-25px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#f6d67d,#8c5c0b 70%);border:3px solid #f7d980;color:#160f04;box-shadow:0 0 25px #e7b84f77}.controls{position:fixed;z-index:2;left:25px;right:25px;bottom:100px;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none}#joystick{width:92px;height:92px;border-radius:50%;border:2px solid #ffffff66;background:#0005;pointer-events:auto;touch-action:none;position:relative}#joystick i{position:absolute;width:40px;height:40px;border-radius:50%;background:#e7b84fcc;left:24px;top:24px}.action-stack{display:grid;gap:10px;pointer-events:auto}.action-stack button{width:72px;height:48px;border-radius:24px;font-size:11px}.panel{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:90px;width:min(680px,calc(100% - 24px));max-height:65vh;overflow:auto;border-radius:18px;padding:20px;display:none}.panel.open{display:block}.panel h2{font-family:'Playfair Display',serif;color:var(--gold);margin:0 0 6px}.panel .close{float:right;background:none;border:0;font-size:22px;padding:0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.card{padding:14px;background:#ffffff0b;border:1px solid #ffffff1c;border-radius:12px}.card em{font-style:normal;font-size:26px}.card small,.card span{display:block;color:#aaa;font-size:10px;margin:5px 0}.card strong{display:block}.card.locked{opacity:.55}.choice{display:grid;gap:8px;margin-top:15px}.choice button{text-align:left;background:#17130b}#toast{position:fixed;z-index:9;left:50%;top:24%;transform:translate(-50%,-20px);background:#0b0907eF;border:1px solid var(--gold);border-radius:10px;padding:12px 20px;opacity:0;transition:.25s;pointer-events:none;text-align:center}#toast.show{opacity:1;transform:translate(-50%,0)}
-@media(max-width:700px){.brand strong{font-size:12px}.wallet{gap:3px}.wallet span{font-size:9px;padding:7px}.location{top:82px;left:10px;width:175px}.mission{top:auto;bottom:190px;right:10px;width:210px;padding:11px}.mission p{font-size:10px}.mission div span{display:none}.controls{bottom:92px;left:15px;right:15px}.panel{bottom:82px}.topbar{padding-left:10px;padding-right:10px}}
-@media(min-width:900px){.nav{left:50%;right:auto;width:600px;transform:translateX(-50%);border-radius:20px 20px 0 0}.controls{bottom:35px}.panel{bottom:100px}}
-@media(orientation:landscape) and (max-height:600px){.topbar{min-height:56px;padding:7px 14px}.crown{font-size:24px}.location{top:66px;width:190px;padding:8px 11px}.location strong{font-size:14px}.mission{top:66px;bottom:auto;width:255px;padding:9px}.mission p{margin:5px 0;font-size:9px}.nav{height:58px;max-width:520px;left:50%;right:auto;transform:translateX(-50%);border-radius:16px 16px 0 0}.nav span{font-size:17px}.nav .play{width:58px;height:58px;margin-top:-15px}.controls{left:18px;right:18px;bottom:66px}#joystick{width:82px;height:82px}#joystick i{left:19px;top:19px}.action-stack{grid-template-columns:repeat(2,72px)}.panel{bottom:64px;max-height:72vh}}
+:root {
+  font-family: Montserrat, system-ui, sans-serif;
+  color: #fff;
+  background: #080705;
+  font-synthesis: none;
+  --gold: #e7b84f;
+  --dark: #090806;
+  --glass: rgba(10, 9, 7, 0.82);
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  overflow: hidden;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+#app,
+#world {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#world {
+  background: linear-gradient(#20466d, #e3a96e);
+}
+.glass {
+  background: var(--glass);
+  border: 1px solid rgba(231, 184, 79, 0.3);
+  box-shadow: 0 12px 40px #0008;
+  backdrop-filter: blur(14px);
+}
+.topbar {
+  position: fixed;
+  z-index: 3;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.brand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+}
+.brand strong {
+  font-family: "Playfair Display", serif;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+.brand small {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 3px;
+}
+.crown {
+  font-size: 30px;
+  color: var(--gold);
+}
+.wallet {
+  display: flex;
+  gap: 10px;
+}
+.wallet span {
+  background: #0008;
+  border-radius: 20px;
+  padding: 5px 7px;
+  font-size: 9px;
+}
+.wallet b {
+  color: var(--gold);
+}
+.location {
+  position: fixed;
+  z-index: 2;
+  top: 8px;
+  left: 8px;
+  padding: 6px 9px;
+  border-radius: 9px;
+  width: 145px;
+}
+.location small {
+  color: var(--gold);
+  letter-spacing: 2px;
+}
+.location strong {
+  display: block;
+  font-size: 11px;
+  margin: 1px 0 5px;
+}
+.location span {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.xp {
+  height: 4px;
+  background: #ffffff22;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.xp i {
+  display: block;
+  height: 100%;
+  width: 12%;
+  background: var(--gold);
+}
+.mission {
+  position: fixed;
+  z-index: 2;
+  top: 42px;
+  right: 8px;
+  width: 180px;
+  padding: 6px 8px;
+  border-radius: 9px;
+}
+.mission small {
+  color: var(--gold);
+  letter-spacing: 2px;
+}
+.mission strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+.mission p {
+  font-size: 8px;
+  line-height: 1.25;
+  color: #ddd;
+  margin: 3px 0;
+}
+.mission div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.mission button,
+.action-stack button,
+.panel button {
+  border: 1px solid var(--gold);
+  background: linear-gradient(135deg, #7a5618, #d7a73c);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 900;
+}
+.mission button {
+  padding: 5px 7px;
+  font-size: 8px;
+}
+.nav {
+  position: fixed;
+  z-index: 4;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 78px;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-width: 1px 0 0;
+}
+.nav button {
+  border: 0;
+  background: none;
+  color: #aaa;
+  font-size: 9px;
+  text-transform: uppercase;
+  min-width: 58px;
+}
+.nav span {
+  display: block;
+  font-size: 22px;
+  margin-bottom: 4px;
+}
+.nav .play {
+  height: 72px;
+  width: 72px;
+  margin-top: -25px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #f6d67d, #8c5c0b 70%);
+  border: 3px solid #f7d980;
+  color: #160f04;
+  box-shadow: 0 0 25px #e7b84f77;
+}
+.controls {
+  position: fixed;
+  z-index: 2;
+  left: 25px;
+  right: 25px;
+  bottom: 100px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+#joystick {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  border: 2px solid #ffffff66;
+  background: #0005;
+  pointer-events: auto;
+  touch-action: none;
+  position: relative;
+}
+#joystick i {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e7b84fcc;
+  left: 24px;
+  top: 24px;
+}
+.action-stack {
+  display: grid;
+  gap: 10px;
+  pointer-events: auto;
+}
+.action-stack button {
+  width: 72px;
+  height: 48px;
+  border-radius: 24px;
+  font-size: 11px;
+}
+.panel {
+  position: fixed;
+  z-index: 5;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 90px;
+  width: min(680px, calc(100% - 24px));
+  max-height: 65vh;
+  overflow: auto;
+  border-radius: 18px;
+  padding: 20px;
+  display: none;
+}
+.panel.open {
+  display: block;
+}
+.panel h2 {
+  font-family: "Playfair Display", serif;
+  color: var(--gold);
+  margin: 0 0 6px;
+}
+.panel .close {
+  float: right;
+  background: none;
+  border: 0;
+  font-size: 22px;
+  padding: 0;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.card {
+  padding: 14px;
+  background: #ffffff0b;
+  border: 1px solid #ffffff1c;
+  border-radius: 12px;
+}
+.card em {
+  font-style: normal;
+  font-size: 26px;
+}
+.card small,
+.card span {
+  display: block;
+  color: #aaa;
+  font-size: 10px;
+  margin: 5px 0;
+}
+.card strong {
+  display: block;
+}
+.card.locked {
+  opacity: 0.55;
+}
+.choice {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+}
+.choice button {
+  text-align: left;
+  background: #17130b;
+}
+#toast {
+  position: fixed;
+  z-index: 9;
+  left: 50%;
+  top: 24%;
+  transform: translate(-50%, -20px);
+  background: #0b0907ef;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  padding: 12px 20px;
+  opacity: 0;
+  transition: 0.25s;
+  pointer-events: none;
+  text-align: center;
+}
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+@media (max-width: 700px) {
+  .brand strong {
+    font-size: 12px;
+  }
+  .wallet {
+    gap: 3px;
+  }
+  .wallet span {
+    font-size: 9px;
+    padding: 7px;
+  }
+  .location {
+    top: 8px;
+    left: 8px;
+    width: 145px;
+  }
+  .mission {
+    top: 42px;
+    bottom: auto;
+    right: 8px;
+    width: 180px;
+    padding: 6px 8px;
+  }
+  .mission p {
+    font-size: 8px;
+  }
+  .mission div span {
+    display: none;
+  }
+  .controls {
+    bottom: 92px;
+    left: 15px;
+    right: 15px;
+  }
+  .panel {
+    bottom: 82px;
+  }
+}
+@media (min-width: 900px) {
+  .nav {
+    left: 50%;
+    right: auto;
+    width: 600px;
+    transform: translateX(-50%);
+    border-radius: 20px 20px 0 0;
+  }
+  .controls {
+    bottom: 35px;
+  }
+  .panel {
+    bottom: 100px;
+  }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .topbar {
+    top: 8px;
+    right: 8px;
+  }
+  .crown {
+    font-size: 24px;
+  }
+  .location {
+    top: 8px;
+    width: 145px;
+    padding: 6px 9px;
+  }
+  .location strong {
+    font-size: 11px;
+  }
+  .mission {
+    top: 42px;
+    bottom: auto;
+    width: 180px;
+    padding: 6px 8px;
+  }
+  .mission p {
+    margin: 2px 0;
+    font-size: 8px;
+  }
+  .nav {
+    height: 58px;
+    max-width: 520px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    border-radius: 16px 16px 0 0;
+  }
+  .nav span {
+    font-size: 17px;
+  }
+  .nav .play {
+    width: 58px;
+    height: 58px;
+    margin-top: -15px;
+  }
+  .controls {
+    left: 18px;
+    right: 18px;
+    bottom: 66px;
+  }
+  #joystick {
+    width: 82px;
+    height: 82px;
+  }
+  #joystick i {
+    left: 19px;
+    top: 19px;
+  }
+  .action-stack {
+    grid-template-columns: repeat(2, 72px);
+  }
+  .panel {
+    bottom: 64px;
+    max-height: 72vh;
+  }
+}
