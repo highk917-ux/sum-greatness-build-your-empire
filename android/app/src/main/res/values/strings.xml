@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SUM GREATNESS: Build Your Empire</string>
+    <string name="title_activity_main">SUM GREATNESS: Build Your Empire</string>
+    <string name="package_name">com.sumgreatness.buildyourempire</string>
+    <string name="custom_url_scheme">com.sumgreatness.buildyourempire</string>
+</resources>
