@@ -1,107 +1,1060 @@
-import * as THREE from 'three';
-import './style.css';
-import { missions, missionChapters } from './data/missions.js';
+import * as THREE from "three";
+import { StatusBar } from "@capacitor/status-bar";
+import "./style.css";
+import { missions, missionChapters } from "./data/missions.js";
 
-const saveKey='sum-greatness-save-v1';
-const defaultState={cash:2500,gems:25,energy:100,xp:120,level:1,reputation:5,mode:'walk',missionStep:0,businesses:[],properties:[],vehicles:['Metro Pass'],lessons:[],playerName:'Founder',avatar:{style:'Executive',outfit:'Midnight Gold',skin:'#7b4b34'},district:'Gaslamp Quarter',garageCapacity:3,rentBank:0,lastRentAt:Date.now(),ownedVehicle:'Metro Pass',businessBank:0,lastBusinessAt:Date.now(),businessData:{},employees:[],achievements:[],entitlements:[],purchaseHistory:[],completedMissions:[],activeMissionId:1,gear:[],equippedGear:'Midnight Gold Suit',activeHome:'Starter Apartment'};
-const state={...defaultState,...JSON.parse(localStorage.getItem(saveKey)||'{}')};
-const $=s=>document.querySelector(s);
-const persist=()=>localStorage.setItem(saveKey,JSON.stringify(state));
-const toast=msg=>{const el=$('#toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)};
-function sync(){ $('#cash').textContent=state.cash.toLocaleString();$('#gems').textContent=state.gems;$('#energy').textContent=state.energy;$('#level').textContent=`LEVEL ${state.level} · ${state.level<3?'ROOKIE':'ENTREPRENEUR'}`;$('#xp-fill').style.width=`${state.xp%100}%`;$('#mode-btn').textContent=state.mode==='walk'?'DRIVE':'WALK';persist() }
-async function lockLandscape(){try{await screen.orientation?.lock?.('landscape')}catch{/* Native Android also reads the landscape preference during sync. */}}
-addEventListener('pointerdown',lockLandscape,{once:true});
-
-const mobileDevice=matchMedia('(pointer:coarse)').matches;
-const renderer=new THREE.WebGLRenderer({canvas:$('#world'),antialias:!mobileDevice,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,mobileDevice?1.25:1.6));renderer.shadowMap.enabled=!mobileDevice;renderer.outputColorSpace=THREE.SRGBColorSpace;
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x7aa1bd);scene.fog=new THREE.Fog(0x9bb2bd,28,110);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,180);camera.position.set(0,4.6,15);
-scene.add(new THREE.HemisphereLight(0xffe0bb,0x263429,2.7));const sun=new THREE.DirectionalLight(0xffc77a,2.6);sun.position.set(-20,28,12);sun.castShadow=!mobileDevice;scene.add(sun);
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),new THREE.MeshStandardMaterial({color:0x415b39,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
-const roadMat=new THREE.MeshStandardMaterial({color:0x24272b,roughness:.85});
-for(let i=-60;i<=60;i+=30){const road=new THREE.Mesh(new THREE.PlaneGeometry(12,170),roadMat);road.rotation.x=-Math.PI/2;road.position.set(i,.015,0);scene.add(road);const cross=road.clone();cross.rotation.z=Math.PI/2;cross.position.set(0,.02,i);scene.add(cross)}
-const goldMat=new THREE.MeshStandardMaterial({color:0xd5a840,metalness:.7,roughness:.25});
-for(let x=-52;x<=52;x+=15)for(let z=-52;z<=52;z+=15){if(Math.abs(x%30)<7||Math.abs(z%30)<7)continue;const h=THREE.MathUtils.randFloat(6,22);const colors=[0x665947,0x31495a,0x6c5148,0x4b545a];const b=new THREE.Mesh(new THREE.BoxGeometry(9,h,9),new THREE.MeshStandardMaterial({color:colors[Math.floor(Math.random()*colors.length)],roughness:.72}));b.position.set(x,h/2,z);b.castShadow=!mobileDevice;b.receiveShadow=!mobileDevice;scene.add(b);for(let y=2;y<h-1;y+=mobileDevice?6:3){const band=new THREE.Mesh(new THREE.BoxGeometry(9.05,.35,9.05),goldMat);band.position.set(x,y,z);scene.add(band)}}
-function makePerson(color=0x111111,skin=0x6f402c){
- const g=new THREE.Group(),skinMat=new THREE.MeshStandardMaterial({color:skin,roughness:.7}),shirtMat=new THREE.MeshStandardMaterial({color,roughness:.72}),jeansMat=new THREE.MeshStandardMaterial({color:0x24364b,roughness:.82}),shoeMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.42}),hairMat=new THREE.MeshStandardMaterial({color:0x080605,roughness:.9});
- const part=(geometry,material,x,y,z)=>{const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.castShadow=!mobileDevice;g.add(mesh);return mesh};
- const body=part(new THREE.CapsuleGeometry(.48,.9,5,10),shirtMat,0,1.75,0);
- const head=part(new THREE.SphereGeometry(.43,18,14),skinMat,0,2.83,0);
- const hair=part(new THREE.SphereGeometry(.435,16,8,0,Math.PI*2,0,Math.PI*.48),hairMat,0,2.93,0);
- const leftArm=part(new THREE.CapsuleGeometry(.15,.85,4,8),skinMat,-.62,1.68,0),rightArm=part(new THREE.CapsuleGeometry(.15,.85,4,8),skinMat,.62,1.68,0);
- const leftLeg=part(new THREE.CapsuleGeometry(.2,.95,4,8),jeansMat,-.25,.67,0),rightLeg=part(new THREE.CapsuleGeometry(.2,.95,4,8),jeansMat,.25,.67,0);
- part(new THREE.BoxGeometry(.43,.22,.68),shoeMat,-.25,.1,.13);part(new THREE.BoxGeometry(.43,.22,.68),shoeMat,.25,.1,.13);
- const chain=part(new THREE.TorusGeometry(.25,.035,8,20,Math.PI),goldMat,0,2.08,.43);chain.rotation.z=Math.PI;
- g.userData={body,head,hair,leftArm,rightArm,leftLeg,rightLeg};return g
+const saveKey = "sum-greatness-save-v1";
+const defaultState = {
+  cash: 2500,
+  gems: 25,
+  energy: 100,
+  xp: 120,
+  level: 1,
+  reputation: 5,
+  mode: "walk",
+  missionStep: 0,
+  businesses: [],
+  properties: [],
+  vehicles: ["Metro Pass"],
+  lessons: [],
+  playerName: "Founder",
+  avatar: { style: "Executive", outfit: "Midnight Gold", skin: "#7b4b34" },
+  district: "Gaslamp Quarter",
+  garageCapacity: 3,
+  rentBank: 0,
+  lastRentAt: Date.now(),
+  ownedVehicle: "Metro Pass",
+  businessBank: 0,
+  lastBusinessAt: Date.now(),
+  businessData: {},
+  employees: [],
+  achievements: [],
+  entitlements: [],
+  purchaseHistory: [],
+  completedMissions: [],
+  activeMissionId: 1,
+  gear: [],
+  equippedGear: "Midnight Gold Suit",
+  activeHome: "Starter Apartment",
+};
+const state = {
+  ...defaultState,
+  ...JSON.parse(localStorage.getItem(saveKey) || "{}"),
+};
+const $ = (s) => document.querySelector(s);
+const persist = () => localStorage.setItem(saveKey, JSON.stringify(state));
+const toast = (msg) => {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2200);
+};
+function sync() {
+  $("#cash").textContent = state.cash.toLocaleString();
+  $("#gems").textContent = state.gems;
+  $("#energy").textContent = state.energy;
+  $("#level").textContent =
+    `LEVEL ${state.level} · ${state.level < 3 ? "ROOKIE" : "ENTREPRENEUR"}`;
+  $("#xp-fill").style.width = `${state.xp % 100}%`;
+  $("#mode-btn").textContent = state.mode === "walk" ? "DRIVE" : "WALK";
+  persist();
 }
-const player=makePerson(0x111111,0x70422f);player.position.set(0,0,8);player.rotation.y=Math.PI;player.scale.setScalar(1.18);scene.add(player);
-const npc=makePerson(0x8b2f56);npc.position.set(8,0,-3);scene.add(npc);const marker=new THREE.Mesh(new THREE.TorusGeometry(1.2,.14,10,32),goldMat);marker.rotation.x=Math.PI/2;marker.position.set(8,.15,-3);scene.add(marker);
-const car=new THREE.Group();const chassis=new THREE.Mesh(new THREE.BoxGeometry(2.2,.7,4.2),new THREE.MeshStandardMaterial({color:0x0c0c0d,metalness:.8,roughness:.2}));chassis.position.y=.75;car.add(chassis);const cabin=new THREE.Mesh(new THREE.BoxGeometry(1.8,.65,2),new THREE.MeshStandardMaterial({color:0xd7aa42,metalness:.55}));cabin.position.set(0,1.3,.2);car.add(cabin);car.visible=false;scene.add(car);
-const keys={};addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-let joy={x:0,y:0};const joystick=$('#joystick'),knob=joystick.querySelector('i');function setJoy(e){const p=e.touches?.[0]||e,r=joystick.getBoundingClientRect(),dx=p.clientX-(r.left+r.width/2),dy=p.clientY-(r.top+r.height/2),d=Math.min(32,Math.hypot(dx,dy)),a=Math.atan2(dy,dx);joy={x:Math.cos(a)*d/32,y:Math.sin(a)*d/32};knob.style.transform=`translate(${joy.x*28}px,${joy.y*28}px)`}joystick.addEventListener('pointerdown',e=>{joystick.setPointerCapture(e.pointerId);setJoy(e)});joystick.addEventListener('pointermove',e=>{if(joystick.hasPointerCapture(e.pointerId))setJoy(e)});joystick.addEventListener('pointerup',()=>{joy={x:0,y:0};knob.style.transform='' });
-function districtFor(x,z){if(z<-30)return'La Jolla Coast';if(z>30)return'Chula Vista Market';if(x<-30)return'Barrio Logan Arts';if(x>30)return'Mission Valley';return'Gaslamp Quarter'}
-const clock=new THREE.Clock(),forward=new THREE.Vector3(),cameraGoal=new THREE.Vector3(),lookGoal=new THREE.Vector3();
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.033),speed=state.mode==='drive'?11:5.8,turnSpeed=state.mode==='drive'?1.7:2.35;const turn=(keys.d?1:0)-(keys.a?1:0)+joy.x,throttle=(keys.w?1:0)-(keys.s?1:0)-joy.y;player.rotation.y-=turn*turnSpeed*dt;if(Math.abs(throttle)>.05){forward.set(Math.sin(player.rotation.y),0,Math.cos(player.rotation.y));player.position.addScaledVector(forward,throttle*speed*dt);const stride=performance.now()/115;player.userData.leftLeg.rotation.x=Math.sin(stride)*.45;player.userData.rightLeg.rotation.x=-Math.sin(stride)*.45;player.userData.leftArm.rotation.x=-Math.sin(stride)*.35;player.userData.rightArm.rotation.x=Math.sin(stride)*.35;player.position.y=Math.abs(Math.sin(stride))*.045;player.position.x=THREE.MathUtils.clamp(player.position.x,-72,72);player.position.z=THREE.MathUtils.clamp(player.position.z,-72,72);const next=districtFor(player.position.x,player.position.z);if(next!==state.district){state.district=next;$('#district').textContent=next;toast(`Now entering ${next}`);persist()}}else{player.position.y=0;for(const limb of [player.userData.leftLeg,player.userData.rightLeg,player.userData.leftArm,player.userData.rightArm])limb.rotation.x*=.82}car.visible=state.mode==='drive';player.visible=state.mode==='walk';car.position.copy(player.position);car.rotation.copy(player.rotation);marker.rotation.z+=dt*.7;marker.position.y=.2+Math.sin(performance.now()/400)*.12;npc.position.x=8+Math.sin(performance.now()/2400)*2;npc.position.z=-3+Math.cos(performance.now()/2600)*1.5;npc.rotation.y=Math.atan2(Math.cos(performance.now()/2400),Math.sin(performance.now()/2600));forward.set(Math.sin(player.rotation.y),0,Math.cos(player.rotation.y));cameraGoal.copy(player.position).addScaledVector(forward,-6.6);cameraGoal.y+=3.7;camera.position.lerp(cameraGoal,1-Math.pow(.002,dt));lookGoal.copy(player.position).addScaledVector(forward,2.2);lookGoal.y+=1.65;camera.lookAt(lookGoal);renderer.render(scene,camera)}
+async function enterGameMode() {
+  try {
+    await StatusBar.hide();
+  } catch {}
+  try {
+    await document.documentElement.requestFullscreen?.({
+      navigationUI: "hide",
+    });
+  } catch {}
+  try {
+    await screen.orientation?.lock?.("landscape");
+  } catch {}
+}
+enterGameMode();
+async function lockLandscape() {
+  await enterGameMode();
+}
+addEventListener("pointerdown", lockLandscape, { once: true });
 
-const panels={
- empire:()=>`<button class="close">×</button><h2>Your Empire</h2><p>Start small. Build smart. Own the city.</p>
+const mobileDevice = matchMedia("(pointer:coarse)").matches;
+const renderer = new THREE.WebGLRenderer({
+  canvas: $("#world"),
+  antialias: !mobileDevice,
+  powerPreference: "high-performance",
+});
+renderer.setPixelRatio(Math.min(devicePixelRatio, mobileDevice ? 1.25 : 1.6));
+renderer.shadowMap.enabled = !mobileDevice;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x7aa1bd);
+scene.fog = new THREE.Fog(0x9bb2bd, 90, 430);
+const camera = new THREE.PerspectiveCamera(
+  58,
+  innerWidth / innerHeight,
+  0.1,
+  650,
+);
+camera.position.set(0, 4.6, 15);
+scene.add(new THREE.HemisphereLight(0xffe0bb, 0x263429, 2.7));
+const sun = new THREE.DirectionalLight(0xffc77a, 2.6);
+sun.position.set(-20, 28, 12);
+sun.castShadow = !mobileDevice;
+scene.add(sun);
+const CITY_HALF = 280;
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(600, 600),
+  new THREE.MeshStandardMaterial({ color: 0x415b39, roughness: 1 }),
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+const roadMat = new THREE.MeshStandardMaterial({
+  color: 0x24272b,
+  roughness: 0.85,
+});
+for (let i = -240; i <= 240; i += 60) {
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(16, 580), roadMat);
+  road.rotation.x = -Math.PI / 2;
+  road.position.set(i, 0.015, 0);
+  scene.add(road);
+  const cross = road.clone();
+  cross.rotation.z = Math.PI / 2;
+  cross.position.set(0, 0.02, i);
+  scene.add(cross);
+}
+const goldMat = new THREE.MeshStandardMaterial({
+  color: 0xd5a840,
+  metalness: 0.7,
+  roughness: 0.25,
+});
+const buildingColliders = [];
+const buildingOffsets = mobileDevice
+  ? [
+      [-16, -16],
+      [16, 16],
+    ]
+  : [
+      [-16, -16],
+      [16, -16],
+      [-16, 16],
+      [16, 16],
+    ];
+for (let blockX = -210; blockX <= 210; blockX += 60)
+  for (let blockZ = -210; blockZ <= 210; blockZ += 60)
+    for (const [ox, oz] of buildingOffsets) {
+      const x = blockX + ox,
+        z = blockZ + oz,
+        w = THREE.MathUtils.randFloat(16, 22),
+        d = THREE.MathUtils.randFloat(16, 22),
+        h = THREE.MathUtils.randFloat(10, 42);
+      const colors = [0x665947, 0x31495a, 0x6c5148, 0x4b545a],
+        b = new THREE.Mesh(
+          new THREE.BoxGeometry(w, h, d),
+          new THREE.MeshStandardMaterial({
+            color: colors[Math.floor(Math.random() * colors.length)],
+            roughness: 0.72,
+          }),
+        );
+      b.position.set(x, h / 2, z);
+      b.castShadow = !mobileDevice;
+      b.receiveShadow = !mobileDevice;
+      scene.add(b);
+      buildingColliders.push({
+        minX: x - w / 2 - 0.7,
+        maxX: x + w / 2 + 0.7,
+        minZ: z - d / 2 - 0.7,
+        maxZ: z + d / 2 + 0.7,
+      });
+      for (let y = 3; y < h - 1; y += mobileDevice ? 8 : 5) {
+        const band = new THREE.Mesh(
+          new THREE.BoxGeometry(w + 0.05, 0.3, d + 0.05),
+          goldMat,
+        );
+        band.position.set(x, y, z);
+        scene.add(band);
+      }
+    }
+function positionIsOpen(x, z) {
+  return (
+    x > -CITY_HALF &&
+    x < CITY_HALF &&
+    z > -CITY_HALF &&
+    z < CITY_HALF &&
+    !buildingColliders.some(
+      (b) => x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ,
+    )
+  );
+}
+function makePerson(color = 0x111111, skin = 0x6f402c) {
+  const g = new THREE.Group(),
+    skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.7 }),
+    shirtMat = new THREE.MeshStandardMaterial({ color, roughness: 0.72 }),
+    jeansMat = new THREE.MeshStandardMaterial({
+      color: 0x24364b,
+      roughness: 0.82,
+    }),
+    shoeMat = new THREE.MeshStandardMaterial({
+      color: 0x090909,
+      roughness: 0.42,
+    }),
+    hairMat = new THREE.MeshStandardMaterial({
+      color: 0x080605,
+      roughness: 0.9,
+    });
+  const part = (geometry, material, x, y, z) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(x, y, z);
+    mesh.castShadow = !mobileDevice;
+    g.add(mesh);
+    return mesh;
+  };
+  const body = part(
+    new THREE.CapsuleGeometry(0.48, 0.9, 5, 10),
+    shirtMat,
+    0,
+    1.75,
+    0,
+  );
+  const head = part(
+    new THREE.SphereGeometry(0.43, 18, 14),
+    skinMat,
+    0,
+    2.83,
+    0,
+  );
+  const hair = part(
+    new THREE.SphereGeometry(0.435, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.48),
+    hairMat,
+    0,
+    2.93,
+    0,
+  );
+  const leftArm = part(
+      new THREE.CapsuleGeometry(0.15, 0.85, 4, 8),
+      skinMat,
+      -0.62,
+      1.68,
+      0,
+    ),
+    rightArm = part(
+      new THREE.CapsuleGeometry(0.15, 0.85, 4, 8),
+      skinMat,
+      0.62,
+      1.68,
+      0,
+    );
+  const leftLeg = part(
+      new THREE.CapsuleGeometry(0.2, 0.95, 4, 8),
+      jeansMat,
+      -0.25,
+      0.67,
+      0,
+    ),
+    rightLeg = part(
+      new THREE.CapsuleGeometry(0.2, 0.95, 4, 8),
+      jeansMat,
+      0.25,
+      0.67,
+      0,
+    );
+  part(new THREE.BoxGeometry(0.43, 0.22, 0.68), shoeMat, -0.25, 0.1, 0.13);
+  part(new THREE.BoxGeometry(0.43, 0.22, 0.68), shoeMat, 0.25, 0.1, 0.13);
+  const chain = part(
+    new THREE.TorusGeometry(0.25, 0.035, 8, 20, Math.PI),
+    goldMat,
+    0,
+    2.08,
+    0.43,
+  );
+  chain.rotation.z = Math.PI;
+  g.userData = { body, head, hair, leftArm, rightArm, leftLeg, rightLeg };
+  return g;
+}
+const player = makePerson(0x111111, 0x70422f);
+player.position.set(0, 0, 8);
+player.rotation.y = Math.PI;
+player.scale.setScalar(1.18);
+scene.add(player);
+const npc = makePerson(0x8b2f56);
+npc.position.set(8, 0, -3);
+scene.add(npc);
+const marker = new THREE.Mesh(
+  new THREE.TorusGeometry(1.2, 0.14, 10, 32),
+  goldMat,
+);
+marker.rotation.x = Math.PI / 2;
+marker.position.set(8, 0.15, -3);
+scene.add(marker);
+const car = new THREE.Group();
+const chassis = new THREE.Mesh(
+  new THREE.BoxGeometry(2.2, 0.7, 4.2),
+  new THREE.MeshStandardMaterial({
+    color: 0x0c0c0d,
+    metalness: 0.8,
+    roughness: 0.2,
+  }),
+);
+chassis.position.y = 0.75;
+car.add(chassis);
+const cabin = new THREE.Mesh(
+  new THREE.BoxGeometry(1.8, 0.65, 2),
+  new THREE.MeshStandardMaterial({ color: 0xd7aa42, metalness: 0.55 }),
+);
+cabin.position.set(0, 1.3, 0.2);
+car.add(cabin);
+car.visible = false;
+scene.add(car);
+const keys = {};
+addEventListener("keydown", (e) => (keys[e.key.toLowerCase()] = true));
+addEventListener("keyup", (e) => (keys[e.key.toLowerCase()] = false));
+let joy = { x: 0, y: 0 };
+const joystick = $("#joystick"),
+  knob = joystick.querySelector("i");
+function setJoy(e) {
+  const p = e.touches?.[0] || e,
+    r = joystick.getBoundingClientRect(),
+    dx = p.clientX - (r.left + r.width / 2),
+    dy = p.clientY - (r.top + r.height / 2),
+    d = Math.min(32, Math.hypot(dx, dy)),
+    a = Math.atan2(dy, dx);
+  joy = { x: (Math.cos(a) * d) / 32, y: (Math.sin(a) * d) / 32 };
+  knob.style.transform = `translate(${joy.x * 28}px,${joy.y * 28}px)`;
+}
+joystick.addEventListener("pointerdown", (e) => {
+  joystick.setPointerCapture(e.pointerId);
+  setJoy(e);
+});
+joystick.addEventListener("pointermove", (e) => {
+  if (joystick.hasPointerCapture(e.pointerId)) setJoy(e);
+});
+joystick.addEventListener("pointerup", () => {
+  joy = { x: 0, y: 0 };
+  knob.style.transform = "";
+});
+function districtFor(x, z) {
+  if (z < -150) return "La Jolla Coast";
+  if (z > 150) return "Chula Vista Market";
+  if (x < -150) return "Barrio Logan Arts";
+  if (x > 150) return "Mission Valley";
+  return "Gaslamp Quarter";
+}
+const clock = new THREE.Clock(),
+  forward = new THREE.Vector3(),
+  cameraGoal = new THREE.Vector3(),
+  lookGoal = new THREE.Vector3();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.033),
+    speed = state.mode === "drive" ? 15 : 6.2,
+    turnSpeed = state.mode === "drive" ? 1.7 : 2.35;
+  const turn = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + joy.x,
+    throttle = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) - joy.y;
+  player.rotation.y -= turn * turnSpeed * dt;
+  if (Math.abs(throttle) > 0.05) {
+    forward.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+    const move = throttle * speed * dt;
+    const nextX = player.position.x + forward.x * move;
+    const nextZ = player.position.z + forward.z * move;
+    // Test each axis independently so the player slides along a wall instead
+    // of crossing it or getting stuck on a corner.
+    if (positionIsOpen(nextX, player.position.z)) player.position.x = nextX;
+    if (positionIsOpen(player.position.x, nextZ)) player.position.z = nextZ;
+    const stride = performance.now() / 115;
+    player.userData.leftLeg.rotation.x = Math.sin(stride) * 0.45;
+    player.userData.rightLeg.rotation.x = -Math.sin(stride) * 0.45;
+    player.userData.leftArm.rotation.x = -Math.sin(stride) * 0.35;
+    player.userData.rightArm.rotation.x = Math.sin(stride) * 0.35;
+    player.position.y = Math.abs(Math.sin(stride)) * 0.045;
+    const next = districtFor(player.position.x, player.position.z);
+    if (next !== state.district) {
+      state.district = next;
+      $("#district").textContent = next;
+      toast(`Now entering ${next}`);
+      persist();
+    }
+  } else {
+    player.position.y = 0;
+    for (const limb of [
+      player.userData.leftLeg,
+      player.userData.rightLeg,
+      player.userData.leftArm,
+      player.userData.rightArm,
+    ])
+      limb.rotation.x *= 0.82;
+  }
+  car.visible = state.mode === "drive";
+  player.visible = state.mode === "walk";
+  car.position.copy(player.position);
+  car.rotation.copy(player.rotation);
+  marker.rotation.z += dt * 0.7;
+  marker.position.y = 0.2 + Math.sin(performance.now() / 400) * 0.12;
+  npc.position.x = 8 + Math.sin(performance.now() / 2400) * 2;
+  npc.position.z = -3 + Math.cos(performance.now() / 2600) * 1.5;
+  npc.rotation.y = Math.atan2(
+    Math.cos(performance.now() / 2400),
+    Math.sin(performance.now() / 2600),
+  );
+  forward.set(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
+  cameraGoal.copy(player.position).addScaledVector(forward, -6.6);
+  cameraGoal.y += 3.7;
+  camera.position.lerp(cameraGoal, 1 - Math.pow(0.002, dt));
+  lookGoal.copy(player.position).addScaledVector(forward, 2.2);
+  lookGoal.y += 1.65;
+  camera.lookAt(lookGoal);
+  renderer.render(scene, camera);
+}
+
+const panels = {
+  empire:
+    () => `<button class="close">×</button><h2>Your Empire</h2><p>Start small. Build smart. Own the city.</p>
 <h3>Businesses · Bank ${state.businessBank.toLocaleString()}</h3><div class="grid">
-${Object.entries(businessCatalog).map(([name,c])=>{const owned=state.businesses.includes(name),b=owned?getBusiness(name):null;return `<div class="card"><em>${c.type==='Clothing'?'👕':c.type==='Food'?'🚚':'💻'}</em><strong>${owned?b.name:name}</strong><small>${owned?`Lv. ${b.level} · ${b.status} · ${b.inventory} stock`:`Startup $ ${c.cost.toLocaleString()} · ${c.location}`}</small><span>${owned?`Net $ ${businessRate(name)}/min · ${b.employees} staff`:`Base potential $ ${c.base}/min`}</span>${owned?`<button data-manage-business="${name}">MANAGE</button>`:`<button data-start-business="${name}">LAUNCH</button>`}</div>`}).join('')}
+${Object.entries(businessCatalog)
+  .map(([name, c]) => {
+    const owned = state.businesses.includes(name),
+      b = owned ? getBusiness(name) : null;
+    return `<div class="card"><em>${c.type === "Clothing" ? "👕" : c.type === "Food" ? "🚚" : "💻"}</em><strong>${owned ? b.name : name}</strong><small>${owned ? `Lv. ${b.level} · ${b.status} · ${b.inventory} stock` : `Startup $ ${c.cost.toLocaleString()} · ${c.location}`}</small><span>${owned ? `Net $ ${businessRate(name)}/min · ${b.employees} staff` : `Base potential $ ${c.base}/min`}</span>${owned ? `<button data-manage-business="${name}">MANAGE</button>` : `<button data-start-business="${name}">LAUNCH</button>`}</div>`;
+  })
+  .join("")}
 <div class="card"><em>💰</em><strong>Business Bank</strong><small>Passive net earnings</small><button data-collect-business>COLLECT</button></div></div>
-<h3>Achievements</h3><div class="grid"><div class="card"><strong>First Founder</strong><small>${state.achievements.includes('First Founder')?'Completed':'Own a business'}</small></div><div class="card"><strong>Team Builder</strong><small>${state.achievements.includes('Team Builder')?'Completed':'Hire 3 employees'}</small></div><div class="card"><strong>Level Up</strong><small>${state.achievements.includes('Level Up')?'Completed':'Upgrade a business'}</small></div></div>
+<h3>Achievements</h3><div class="grid"><div class="card"><strong>First Founder</strong><small>${state.achievements.includes("First Founder") ? "Completed" : "Own a business"}</small></div><div class="card"><strong>Team Builder</strong><small>${state.achievements.includes("Team Builder") ? "Completed" : "Hire 3 employees"}</small></div><div class="card"><strong>Level Up</strong><small>${state.achievements.includes("Level Up") ? "Completed" : "Upgrade a business"}</small></div></div>
 <h3>Garage · ${state.vehicles.length}/${state.garageCapacity}</h3><div class="grid"><div class="card"><em>🚇</em><strong>Metro Pass</strong><small>Owned · City travel</small></div><div class="card"><em>🚙</em><strong>Greatness SUV</strong><small>$1,500 · Speed 62 · Handling 78</small><button data-vehicle="Greatness SUV" data-price="1500">BUY</button></div><div class="card"><em>🏎️</em><strong>Gold Coast Sport</strong><small>$4,500 · Speed 91 · Handling 72</small><button data-vehicle="Gold Coast Sport" data-price="4500">BUY</button></div></div>
 <h3>Real Estate</h3><div class="grid"><div class="card"><em>🏠</em><strong>East Village Studio</strong><small>$3,000 · Rent $90/min</small><button data-property="East Village Studio" data-price="3000">BUY</button></div><div class="card"><em>🌊</em><strong>Oceanview Mansion</strong><small>$2,500,000 · Income $45,000/hr</small><button data-property="Oceanview Mansion" data-price="2500000">BUY</button></div><div class="card"><em>💰</em><strong>Rental Bank</strong><small>Accrued income: $${state.rentBank.toLocaleString()}</small><button data-collect-rent>COLLECT</button></div></div>`,
- missions:()=>{const active=missions.find(m=>m.id===state.activeMissionId)||missions[0],done=state.completedMissions.length;return `<button class="close">×</button><h2>Missions & Assignments</h2><p>${done}/80 completed · Learn real business skills across San Diego.</p><div class="card"><em>🎯</em><strong>#${active.id} · ${active.title}</strong><small>${active.type.toUpperCase()} · ${active.district} · Mentor: ${active.npc}</small><span>${active.objective}</span><button data-complete-mission="${active.id}">COMPLETE ASSIGNMENT</button></div><h3>Business Curriculum</h3><div class="grid">${missionChapters.map(c=>{const count=missions.filter(m=>m.chapter===c.name&&state.completedMissions.includes(m.id)).length;return `<div class="card"><strong>${c.id}. ${c.name}</strong><small>${c.district} · ${c.mentor}</small><span>${count}/8 completed</span><button data-view-chapter="${c.name}">VIEW</button></div>`}).join('')}</div>`},
- learn:()=>`<button class="close">×</button><h2>Greatness Academy</h2><p>Turn game decisions into real-world business skills.</p><div class="grid"><div class="card"><em>💡</em><strong>Validate the Idea</strong><small>Talk to customers before spending big.</small><button data-lesson="validation">START</button></div><div class="card"><em>📊</em><strong>Revenue vs. Profit</strong><small>Profit is revenue minus inventory, payroll, marketing, and other expenses.</small><button data-lesson="numbers">START</button></div><div class="card"><em>🧾</em><strong>Plan for Taxes</strong><small>Keep business records and reserve part of profit instead of spending everything.</small><button data-lesson="taxes">START</button></div><div class="card"><em>💵</em><strong>Protect Cash Flow</strong><small>Keep enough cash available for payroll, inventory, and emergencies.</small><button data-lesson="cashflow">START</button></div><div class="card"><em>♻️</em><strong>Build to Last</strong><small>Balance people, profit, and resources.</small><button data-lesson="sustainability">START</button></div></div>`,
- profile:()=>`<button class="close">×</button><h2>${state.playerName}</h2><p>Level ${state.level} entrepreneur · ${state.reputation} reputation</p><div class="grid"><div class="card"><strong>${state.businesses.length}</strong><small>Businesses</small></div><div class="card"><strong>${state.properties.length}</strong><small>Properties</small></div><div class="card"><strong>${state.vehicles.length}</strong><small>Vehicles</small></div><div class="card"><strong>${state.lessons.length}/5</strong><small>Lessons</small></div></div><h3>Character Studio</h3><div class="grid"><div class="card"><em>🕴🏾</em><strong>Executive</strong><small>Tailored business silhouette</small><button data-avatar="Executive">SELECT</button></div><div class="card"><em>🧢</em><strong>Street Founder</strong><small>Premium urban streetwear</small><button data-avatar="Street Founder">SELECT</button></div><div class="card"><em>👩🏾‍💼</em><strong>Boss</strong><small>Modern luxury leadership</small><button data-avatar="Boss">SELECT</button></div></div><h3>Wardrobe</h3><div class="choice"><button data-outfit="Midnight Gold">Midnight Gold</button><button data-outfit="Royal Burgundy">Royal Burgundy</button><button data-outfit="Ocean Blue">Ocean Blue</button></div><h3>SUM GREATNESS Lifestyle</h3><p>Current home: ${state.activeHome}<br>Current vehicle: ${state.ownedVehicle}<br>Equipped gear: ${state.equippedGear}</p><button data-open-lifestyle>LIFESTYLE MARKET</button><h3>Optional Store</h3><p>Buy convenience, currency, and cosmetic packs. Every reward can still be earned by playing.</p><button data-open-store>OPEN STORE</button><button data-restore-purchases>RESTORE PURCHASES</button>`,
- world:()=>''};
-const lifestyleCatalog={
- homes:[
-  {id:'starter_apartment',name:'Starter Apartment',icon:'🏠',cash:0,desc:'Your first San Diego home'},
-  {id:'downtown_loft',name:'SUM GREATNESS Downtown Loft',icon:'🌆',cash:25000,desc:'Modern branded loft with city views'},
-  {id:'coastal_villa',name:'Greatness Coastal Villa',icon:'🌊',cash:125000,desc:'Luxury coastal home and six-car garage'},
-  {id:'empire_estate',name:'Crown Empire Estate',icon:'🏰',cash:500000,desc:'Flagship mansion with business command center'}
- ],
- cars:[
-  {id:'greatness_suv',name:'Greatness SUV',icon:'🚙',cash:1500,desc:'Black-and-gold everyday luxury'},
-  {id:'gold_coast_sport',name:'Gold Coast Sport',icon:'🏎️',cash:4500,desc:'Fast San Diego sports coupe'},
-  {id:'sg_executive',name:'SG Executive Sedan',icon:'🚘',cash:30000,desc:'Premium founder transportation'},
-  {id:'crown_hypercar',name:'Crown Hypercar',icon:'🏁',cash:175000,desc:'Top-tier SUM GREATNESS performance'}
- ],
- gear:[
-  {id:'sg_hoodie',name:'SUM GREATNESS Crown Hoodie',icon:'🧥',gems:20,desc:'Black hoodie with metallic-gold crown'},
-  {id:'sg_sneakers',name:'Greatness Gold Sneakers',icon:'👟',gems:25,desc:'Signature black-and-gold footwear'},
-  {id:'sg_chain',name:'SG Crown Chain',icon:'📿',gems:35,desc:'Luxury branded jewelry'},
-  {id:'sg_watch',name:'Empire Leader Watch',icon:'⌚',gems:40,desc:'Founder edition timepiece'},
-  {id:'sg_suit',name:'Midnight Gold Suit',icon:'🤵🏾',gems:60,desc:'Premium SUM GREATNESS executive suit'}
- ]
+  missions: () => {
+    const active =
+        missions.find((m) => m.id === state.activeMissionId) || missions[0],
+      done = state.completedMissions.length;
+    return `<button class="close">×</button><h2>Missions & Assignments</h2><p>${done}/80 completed · Learn real business skills across San Diego.</p><div class="card"><em>🎯</em><strong>#${active.id} · ${active.title}</strong><small>${active.type.toUpperCase()} · ${active.district} · Mentor: ${active.npc}</small><span>${active.objective}</span><button data-complete-mission="${active.id}">COMPLETE ASSIGNMENT</button></div><h3>Business Curriculum</h3><div class="grid">${missionChapters
+      .map((c) => {
+        const count = missions.filter(
+          (m) => m.chapter === c.name && state.completedMissions.includes(m.id),
+        ).length;
+        return `<div class="card"><strong>${c.id}. ${c.name}</strong><small>${c.district} · ${c.mentor}</small><span>${count}/8 completed</span><button data-view-chapter="${c.name}">VIEW</button></div>`;
+      })
+      .join("")}</div>`;
+  },
+  learn: () =>
+    `<button class="close">×</button><h2>Greatness Academy</h2><p>Turn game decisions into real-world business skills.</p><div class="grid"><div class="card"><em>💡</em><strong>Validate the Idea</strong><small>Talk to customers before spending big.</small><button data-lesson="validation">START</button></div><div class="card"><em>📊</em><strong>Revenue vs. Profit</strong><small>Profit is revenue minus inventory, payroll, marketing, and other expenses.</small><button data-lesson="numbers">START</button></div><div class="card"><em>🧾</em><strong>Plan for Taxes</strong><small>Keep business records and reserve part of profit instead of spending everything.</small><button data-lesson="taxes">START</button></div><div class="card"><em>💵</em><strong>Protect Cash Flow</strong><small>Keep enough cash available for payroll, inventory, and emergencies.</small><button data-lesson="cashflow">START</button></div><div class="card"><em>♻️</em><strong>Build to Last</strong><small>Balance people, profit, and resources.</small><button data-lesson="sustainability">START</button></div></div>`,
+  profile: () =>
+    `<button class="close">×</button><h2>${state.playerName}</h2><p>Level ${state.level} entrepreneur · ${state.reputation} reputation</p><div class="grid"><div class="card"><strong>${state.businesses.length}</strong><small>Businesses</small></div><div class="card"><strong>${state.properties.length}</strong><small>Properties</small></div><div class="card"><strong>${state.vehicles.length}</strong><small>Vehicles</small></div><div class="card"><strong>${state.lessons.length}/5</strong><small>Lessons</small></div></div><h3>Character Studio</h3><div class="grid"><div class="card"><em>🕴🏾</em><strong>Executive</strong><small>Tailored business silhouette</small><button data-avatar="Executive">SELECT</button></div><div class="card"><em>🧢</em><strong>Street Founder</strong><small>Premium urban streetwear</small><button data-avatar="Street Founder">SELECT</button></div><div class="card"><em>👩🏾‍💼</em><strong>Boss</strong><small>Modern luxury leadership</small><button data-avatar="Boss">SELECT</button></div></div><h3>Wardrobe</h3><div class="choice"><button data-outfit="Midnight Gold">Midnight Gold</button><button data-outfit="Royal Burgundy">Royal Burgundy</button><button data-outfit="Ocean Blue">Ocean Blue</button></div><h3>SUM GREATNESS Lifestyle</h3><p>Current home: ${state.activeHome}<br>Current vehicle: ${state.ownedVehicle}<br>Equipped gear: ${state.equippedGear}</p><button data-open-lifestyle>LIFESTYLE MARKET</button><h3>Optional Store</h3><p>Buy convenience, currency, and cosmetic packs. Every reward can still be earned by playing.</p><button data-open-store>OPEN STORE</button><button data-restore-purchases>RESTORE PURCHASES</button>`,
+  world: () => "",
 };
-function ownsLifestyle(type,item){if(type==='homes')return item.cash===0||state.properties.includes(item.name);if(type==='cars')return state.vehicles.includes(item.name);return state.gear.includes(item.name)||state.equippedGear===item.name}
-function openLifestyleMarket(){const p=$('#panel');const sections=Object.entries(lifestyleCatalog).map(([type,items])=>{const cards=items.map(item=>{const owned=ownsLifestyle(type,item),price=item.cash!=null?`$${item.cash.toLocaleString()}`:`${item.gems} gems`;return `<div class="card"><em>${item.icon}</em><strong>${item.name}</strong><small>${item.desc}</small><span>${price}</span><button data-lifestyle-type="${type}" data-lifestyle-id="${item.id}">${owned?'SELECT':'BUY'}</button></div>`}).join('');return `<h3>${type==='homes'?'Homes':type==='cars'?'Vehicles':'Branded Gear'}</h3><div class="grid">${cards}</div>`}).join('');p.innerHTML=`<button class="close">×</button><h2>SUM GREATNESS Lifestyle</h2><p>Upgrade your home, garage, and branded look. All items can be earned with gameplay currency.</p>${sections}`;p.classList.add('open');p.querySelector('.close').onclick=()=>p.classList.remove('open')}
-function buyLifestyle(type,id){const item=lifestyleCatalog[type]?.find(x=>x.id===id);if(!item)return;const owned=ownsLifestyle(type,item);if(!owned){if(item.cash!=null){if(state.cash<item.cash)return toast('You need more cash.');state.cash-=item.cash}else{if(state.gems<item.gems)return toast('You need more gems.');state.gems-=item.gems}if(type==='homes')state.properties.push(item.name);else if(type==='cars'){if(state.vehicles.length>=state.garageCapacity)state.garageCapacity++;state.vehicles.push(item.name)}else state.gear.push(item.name)}if(type==='homes')state.activeHome=item.name;else if(type==='cars')state.ownedVehicle=item.name;else state.equippedGear=item.name;sync();toast(`${item.name} selected`);openLifestyleMarket()}
-const purchaseCatalog={
- 'cash_small':{title:'Growth Cash Pack',price:'$1.99',cash:5000,desc:'5,000 game cash'},
- 'cash_large':{title:'Empire Cash Pack',price:'$9.99',cash:35000,desc:'35,000 game cash'},
- 'gems_100':{title:'Greatness Gems',price:'$4.99',gems:100,desc:'100 gems for convenience and cosmetics'},
- 'founder_pack':{title:'Founder Pack',price:'$14.99',cash:20000,gems:150,entitlement:'founder_pack',desc:'Cash, gems, and exclusive Founder outfit'},
- 'vip_monthly':{title:'Greatness VIP Monthly',price:'$4.99/mo',entitlement:'vip',desc:'Bonus daily rewards, VIP cosmetics, and ad-free convenience'},
- 'vip_yearly':{title:'Greatness VIP Yearly',price:'$49.99/yr',entitlement:'vip',desc:'One year of VIP convenience perks'}
+const lifestyleCatalog = {
+  homes: [
+    {
+      id: "starter_apartment",
+      name: "Starter Apartment",
+      icon: "🏠",
+      cash: 0,
+      desc: "Your first San Diego home",
+    },
+    {
+      id: "downtown_loft",
+      name: "SUM GREATNESS Downtown Loft",
+      icon: "🌆",
+      cash: 25000,
+      desc: "Modern branded loft with city views",
+    },
+    {
+      id: "coastal_villa",
+      name: "Greatness Coastal Villa",
+      icon: "🌊",
+      cash: 125000,
+      desc: "Luxury coastal home and six-car garage",
+    },
+    {
+      id: "empire_estate",
+      name: "Crown Empire Estate",
+      icon: "🏰",
+      cash: 500000,
+      desc: "Flagship mansion with business command center",
+    },
+  ],
+  cars: [
+    {
+      id: "greatness_suv",
+      name: "Greatness SUV",
+      icon: "🚙",
+      cash: 1500,
+      desc: "Black-and-gold everyday luxury",
+    },
+    {
+      id: "gold_coast_sport",
+      name: "Gold Coast Sport",
+      icon: "🏎️",
+      cash: 4500,
+      desc: "Fast San Diego sports coupe",
+    },
+    {
+      id: "sg_executive",
+      name: "SG Executive Sedan",
+      icon: "🚘",
+      cash: 30000,
+      desc: "Premium founder transportation",
+    },
+    {
+      id: "crown_hypercar",
+      name: "Crown Hypercar",
+      icon: "🏁",
+      cash: 175000,
+      desc: "Top-tier SUM GREATNESS performance",
+    },
+  ],
+  gear: [
+    {
+      id: "sg_hoodie",
+      name: "SUM GREATNESS Crown Hoodie",
+      icon: "🧥",
+      gems: 20,
+      desc: "Black hoodie with metallic-gold crown",
+    },
+    {
+      id: "sg_sneakers",
+      name: "Greatness Gold Sneakers",
+      icon: "👟",
+      gems: 25,
+      desc: "Signature black-and-gold footwear",
+    },
+    {
+      id: "sg_chain",
+      name: "SG Crown Chain",
+      icon: "📿",
+      gems: 35,
+      desc: "Luxury branded jewelry",
+    },
+    {
+      id: "sg_watch",
+      name: "Empire Leader Watch",
+      icon: "⌚",
+      gems: 40,
+      desc: "Founder edition timepiece",
+    },
+    {
+      id: "sg_suit",
+      name: "Midnight Gold Suit",
+      icon: "🤵🏾",
+      gems: 60,
+      desc: "Premium SUM GREATNESS executive suit",
+    },
+  ],
 };
-function openStore(){const p=$('#panel');p.innerHTML=`<button class="close">×</button><h2>Greatness Store</h2><p>Optional convenience only. Free players can unlock the complete game and reach endgame.</p><div class="grid">${Object.entries(purchaseCatalog).map(([id,x])=>`<div class="card"><em>${id.includes('cash')?'💵':id.includes('gems')?'💎':id.includes('vip')?'♛':'🎁'}</em><strong>${x.title}</strong><small>${x.desc}</small><span>${x.price}</span><button data-purchase="${id}">BUY</button></div>`).join('')}</div><p><small>Purchases are processed securely by Apple App Store or Google Play through RevenueCat. Restore purchases is available from Profile.</small></p>`;p.classList.add('open');p.querySelector('.close').onclick=()=>p.classList.remove('open')}
-async function purchaseProduct(id){const product=purchaseCatalog[id];if(!product)return;const bridge=window.SumGreatnessPurchases;if(!bridge?.purchase){toast('Purchases activate in the installed iOS or Android app.');return}try{const receipt=await bridge.purchase(id);if(!receipt?.verified)throw new Error('Purchase not verified');if(product.cash)state.cash+=product.cash;if(product.gems)state.gems+=product.gems;if(product.entitlement&&!state.entitlements.includes(product.entitlement))state.entitlements.push(product.entitlement);state.purchaseHistory.push({id,date:Date.now(),transactionId:receipt.transactionId});sync();toast(`${product.title} added successfully`);openStore()}catch(err){toast(err?.message||'Purchase canceled')}}
-async function restorePurchases(){const bridge=window.SumGreatnessPurchases;if(!bridge?.restore){toast('Restore is available in the installed mobile app.');return}try{const restored=await bridge.restore();state.entitlements=[...new Set([...state.entitlements,...(restored.entitlements||[])])];sync();toast('Purchases restored')}catch{toast('Could not restore purchases')}}
-const businessCatalog={
- 'Streetwear Studio':{cost:2000,base:45,type:'Clothing',location:'Gaslamp Quarter'},
- 'Greatness Food Truck':{cost:3500,base:70,type:'Food',location:'Chula Vista Market'},
- 'Pacific Tech Lab':{cost:8000,base:150,type:'Technology',location:'Mission Valley'}
+function ownsLifestyle(type, item) {
+  if (type === "homes")
+    return item.cash === 0 || state.properties.includes(item.name);
+  if (type === "cars") return state.vehicles.includes(item.name);
+  return state.gear.includes(item.name) || state.equippedGear === item.name;
+}
+function openLifestyleMarket() {
+  const p = $("#panel");
+  const sections = Object.entries(lifestyleCatalog)
+    .map(([type, items]) => {
+      const cards = items
+        .map((item) => {
+          const owned = ownsLifestyle(type, item),
+            price =
+              item.cash != null
+                ? `$${item.cash.toLocaleString()}`
+                : `${item.gems} gems`;
+          return `<div class="card"><em>${item.icon}</em><strong>${item.name}</strong><small>${item.desc}</small><span>${price}</span><button data-lifestyle-type="${type}" data-lifestyle-id="${item.id}">${owned ? "SELECT" : "BUY"}</button></div>`;
+        })
+        .join("");
+      return `<h3>${type === "homes" ? "Homes" : type === "cars" ? "Vehicles" : "Branded Gear"}</h3><div class="grid">${cards}</div>`;
+    })
+    .join("");
+  p.innerHTML = `<button class="close">×</button><h2>SUM GREATNESS Lifestyle</h2><p>Upgrade your home, garage, and branded look. All items can be earned with gameplay currency.</p>${sections}`;
+  p.classList.add("open");
+  p.querySelector(".close").onclick = () => p.classList.remove("open");
+}
+function buyLifestyle(type, id) {
+  const item = lifestyleCatalog[type]?.find((x) => x.id === id);
+  if (!item) return;
+  const owned = ownsLifestyle(type, item);
+  if (!owned) {
+    if (item.cash != null) {
+      if (state.cash < item.cash) return toast("You need more cash.");
+      state.cash -= item.cash;
+    } else {
+      if (state.gems < item.gems) return toast("You need more gems.");
+      state.gems -= item.gems;
+    }
+    if (type === "homes") state.properties.push(item.name);
+    else if (type === "cars") {
+      if (state.vehicles.length >= state.garageCapacity) state.garageCapacity++;
+      state.vehicles.push(item.name);
+    } else state.gear.push(item.name);
+  }
+  if (type === "homes") state.activeHome = item.name;
+  else if (type === "cars") state.ownedVehicle = item.name;
+  else state.equippedGear = item.name;
+  sync();
+  toast(`${item.name} selected`);
+  openLifestyleMarket();
+}
+const purchaseCatalog = {
+  cash_small: {
+    title: "Growth Cash Pack",
+    price: "$1.99",
+    cash: 5000,
+    desc: "5,000 game cash",
+  },
+  cash_large: {
+    title: "Empire Cash Pack",
+    price: "$9.99",
+    cash: 35000,
+    desc: "35,000 game cash",
+  },
+  gems_100: {
+    title: "Greatness Gems",
+    price: "$4.99",
+    gems: 100,
+    desc: "100 gems for convenience and cosmetics",
+  },
+  founder_pack: {
+    title: "Founder Pack",
+    price: "$14.99",
+    cash: 20000,
+    gems: 150,
+    entitlement: "founder_pack",
+    desc: "Cash, gems, and exclusive Founder outfit",
+  },
+  vip_monthly: {
+    title: "Greatness VIP Monthly",
+    price: "$4.99/mo",
+    entitlement: "vip",
+    desc: "Bonus daily rewards, VIP cosmetics, and ad-free convenience",
+  },
+  vip_yearly: {
+    title: "Greatness VIP Yearly",
+    price: "$49.99/yr",
+    entitlement: "vip",
+    desc: "One year of VIP convenience perks",
+  },
 };
-function getBusiness(name){if(!state.businessData[name])state.businessData[name]={name,level:1,inventory:50,price:25,marketing:0,status:'active',employees:0};return state.businessData[name]}
-function businessRate(name){const b=getBusiness(name),cat=businessCatalog[name];if(!cat||b.status!=='active'||b.inventory<=0)return 0;return Math.max(0,Math.round(cat.base*b.level*(1+b.employees*.25)*(1+b.marketing*.15)-b.employees*8))}
-function updateBusinessIncome(){const mins=Math.floor((Date.now()-state.lastBusinessAt)/60000);if(mins<1)return;for(const name of state.businesses){const b=getBusiness(name),earned=businessRate(name)*mins;state.businessBank+=earned;b.inventory=Math.max(0,b.inventory-mins*2)}state.lastBusinessAt=Date.now();checkAchievements();persist()}
-function checkAchievements(){const unlock=(id)=>{if(!state.achievements.includes(id)){state.achievements.push(id);state.gems+=5;toast(`Achievement unlocked · ${id} +5 gems`)}};if(state.businesses.length>=1)unlock('First Founder');if(state.employees.length>=3)unlock('Team Builder');if(Object.values(state.businessData).some(b=>b.level>=2))unlock('Level Up');if(state.cash>=50000)unlock('Cash Flow King')}
-function updateRent(){const minutes=Math.floor((Date.now()-state.lastRentAt)/60000);if(minutes<1)return;let income=0;if(state.properties.includes('East Village Studio'))income+=minutes*90;if(state.properties.includes('Oceanview Mansion'))income+=Math.floor(minutes/60)*45000;state.rentBank+=income;state.lastRentAt=Date.now();persist()}
-function openBusiness(name){const b=getBusiness(name),cat=businessCatalog[name],p=$('#panel');p.innerHTML=`<button class="close">×</button><h2>${b.name}</h2><p>${cat.type} · ${cat.location}</p><div class="grid"><div class="card"><strong>Level ${b.level}</strong><small>Upgrade: $ ${(500*b.level).toLocaleString()}</small><button data-upgrade-business="${name}">UPGRADE</button></div><div class="card"><strong>${b.employees} Employees</strong><small>Hire cost: $300</small><button data-hire-business="${name}">HIRE</button></div><div class="card"><strong>${b.inventory} Inventory</strong><small>Restock 100: $250</small><button data-restock-business="${name}">RESTOCK</button></div><div class="card"><strong>Price $ ${b.price}</strong><small>Adjust product price</small><button data-price-business="${name}">ADJUST</button></div><div class="card"><strong>Marketing Lv. ${b.marketing}</strong><small>Campaign: $400</small><button data-market-business="${name}">PROMOTE</button></div><div class="card"><strong>${b.status.toUpperCase()}</strong><small>Pause or resume operations</small><button data-toggle-business="${name}">${b.status==='active'?'PAUSE':'RESUME'}</button></div></div><div class="choice"><button data-rename-business="${name}">RENAME BUSINESS</button></div>`;p.classList.add('open');p.querySelector('.close').onclick=()=>p.classList.remove('open')}
-function openPanel(name){updateBusinessIncome();const p=$('#panel');if(name==='world'){p.classList.remove('open');return}p.innerHTML=panels[name]();p.classList.add('open');p.querySelector('.close').onclick=()=>p.classList.remove('open')}
-document.addEventListener('click',e=>{updateRent();updateBusinessIncome();const panel=e.target.closest('[data-panel]')?.dataset.panel;if(panel)openPanel(panel);const action=e.target.closest('[data-action]')?.dataset.action;if(action==='mode'){state.mode=state.mode==='walk'?'drive':'walk';toast(`${state.mode==='walk'?'Walking':'Driving'} mode`);sync()}if(action==='interact'){const dist=player.position.distanceTo(npc.position);if(dist<6){openConversation()}else toast('Move closer to Maya at the gold marker.')}if(action==='focus-mission'){player.position.set(3,0,1);toast('Mission marker is ahead.')}if(e.target.closest('[data-open-lifestyle]'))openLifestyleMarket();const lifestyle=e.target.closest('[data-lifestyle-id]');if(lifestyle)buyLifestyle(lifestyle.dataset.lifestyleType,lifestyle.dataset.lifestyleId);const completeMission=Number(e.target.closest('[data-complete-mission]')?.dataset.completeMission);if(completeMission){const m=missions.find(x=>x.id===completeMission);if(m&&!state.completedMissions.includes(m.id)){state.completedMissions.push(m.id);state.cash+=m.reward.cash;state.xp+=m.reward.xp;state.gems+=m.reward.gems;state.reputation+=2;state.activeMissionId=Math.min(80,m.id+1);toast(`Mission complete · ${m.reward.cash} + ${m.reward.xp} XP`);sync();openPanel('missions')}}const chapter=e.target.closest('[data-view-chapter]')?.dataset.viewChapter;if(chapter){const list=missions.filter(m=>m.chapter===chapter),p=$('#panel');p.innerHTML=`<button class="close">×</button><h2>${chapter}</h2><div class="grid">${list.map(m=>`<div class="card"><strong>#${m.id} ${m.title}</strong><small>${m.type} · ${m.npc}</small><span>${state.completedMissions.includes(m.id)?'Completed':m.objective}</span></div>`).join('')}</div>`;p.querySelector('.close').onclick=()=>p.classList.remove('open')}if(e.target.closest('[data-open-store]'))openStore();if(e.target.closest('[data-restore-purchases]'))restorePurchases();const product=e.target.closest('[data-purchase]')?.dataset.purchase;if(product)purchaseProduct(product);const manage=e.target.closest('[data-manage-business]')?.dataset.manageBusiness;if(manage)openBusiness(manage);const start=e.target.closest('[data-start-business]')?.dataset.startBusiness;if(start){const c=businessCatalog[start];if(state.cash<c.cost)return toast('You need more cash.');state.cash-=c.cost;state.businesses.push(start);getBusiness(start);state.xp+=100;state.reputation+=5;checkAchievements();toast(`${start} launched!`);sync();openPanel('empire')}if(e.target.closest('[data-collect-business]')){if(!state.businessBank)return toast('No business earnings ready yet.');state.cash+=state.businessBank;toast(`Collected ${state.businessBank.toLocaleString()} business profit`);state.businessBank=0;checkAchievements();sync();openPanel('empire')}const bizAction=e.target.closest('[data-upgrade-business],[data-hire-business],[data-restock-business],[data-price-business],[data-market-business],[data-toggle-business],[data-rename-business]');if(bizAction){const name=bizAction.dataset.upgradeBusiness||bizAction.dataset.hireBusiness||bizAction.dataset.restockBusiness||bizAction.dataset.priceBusiness||bizAction.dataset.marketBusiness||bizAction.dataset.toggleBusiness||bizAction.dataset.renameBusiness,b=getBusiness(name);if(bizAction.dataset.upgradeBusiness){const cost=500*b.level;if(state.cash<cost)return toast('You need more cash.');state.cash-=cost;b.level++}if(bizAction.dataset.hireBusiness){if(state.cash<300)return toast('You need more cash.');state.cash-=300;b.employees++;state.employees.push({name:`Employee ${state.employees.length+1}`,business:name,role:b.employees===1?'Manager':'Associate',skill:1})}if(bizAction.dataset.restockBusiness){if(state.cash<250)return toast('You need more cash.');state.cash-=250;b.inventory+=100}if(bizAction.dataset.priceBusiness)b.price=b.price>=45?15:b.price+5;if(bizAction.dataset.marketBusiness){if(state.cash<400)return toast('You need more cash.');state.cash-=400;b.marketing++}if(bizAction.dataset.toggleBusiness)b.status=b.status==='active'?'paused':'active';if(bizAction.dataset.renameBusiness){const n=prompt('Enter a new business name',b.name);if(n?.trim())b.name=n.trim().slice(0,28)}checkAchievements();sync();openBusiness(name)}const avatar=e.target.closest('[data-avatar]')?.dataset.avatar;if(avatar){state.avatar.style=avatar;toast(`${avatar} character selected`);sync();openPanel('profile')}const outfit=e.target.closest('[data-outfit]')?.dataset.outfit;if(outfit){state.avatar.outfit=outfit;const colors={'Midnight Gold':0x13110f,'Royal Burgundy':0x661f36,'Ocean Blue':0x173f65};player.userData.body.material.color.setHex(colors[outfit]);toast(`${outfit} equipped`);sync()}const vehicle=e.target.closest('[data-vehicle]');if(vehicle){const name=vehicle.dataset.vehicle,price=Number(vehicle.dataset.price);if(state.vehicles.includes(name))return toast('You already own this vehicle.');if(state.vehicles.length>=state.garageCapacity)return toast('Your garage is full.');if(state.cash<price)return toast('You need more cash.');state.cash-=price;state.vehicles.push(name);state.ownedVehicle=name;toast(`${name} added to your garage`);sync();openPanel('empire')}const property=e.target.closest('[data-property]');if(property){const name=property.dataset.property,price=Number(property.dataset.price);if(state.properties.includes(name))return toast('You already own this property.');if(state.cash<price)return toast('You need more cash.');state.cash-=price;state.properties.push(name);state.lastRentAt=Date.now();toast(`${name} purchased · rental income active`);sync();openPanel('empire')}if(e.target.closest('[data-collect-rent]')){if(!state.rentBank)return toast('No rental income ready yet.');state.cash+=state.rentBank;toast(`Collected ${state.rentBank.toLocaleString()} rent`);state.rentBank=0;sync();openPanel('empire')}const buy=e.target.closest('[data-buy]');if(buy){if(state.businesses.includes('Streetwear Studio'))return toast('You already own this business.');if(state.cash<2000)return toast('You need more cash.');state.cash-=2000;state.businesses.push('Streetwear Studio');state.xp+=100;state.reputation+=5;toast('Streetwear Studio launched!');sync();openPanel('empire')}const lesson=e.target.closest('[data-lesson]')?.dataset.lesson;if(lesson){if(!state.lessons.includes(lesson)){state.lessons.push(lesson);state.xp+=25;toast('+25 XP · Lesson completed');sync()}openPanel('learn')}});
-function openConversation(){const p=$('#panel');const completed=state.missionStep>0;p.innerHTML=completed?`<h2>Maya · Local Business Mentor</h2><p>“Now protect your cash flow. Which move makes a young business more sustainable?”</p><div class="choice"><button data-mentor="correct">Keep an emergency reserve and track expenses</button><button data-mentor="wrong">Spend every dollar as soon as it arrives</button><button data-mentor="wrong">Ignore customer feedback</button></div>`:`<h2>Maya · Local Business Mentor</h2><p>“Great businesses solve a real problem. Before spending your money, what should you do first?”</p><div class="choice"><button data-answer="correct">Talk to possible customers and test the idea</button><button data-answer="wrong">Spend everything on inventory immediately</button><button data-answer="wrong">Copy a business without researching it</button></div>`;p.querySelectorAll('[data-mentor]').forEach(b=>b.onclick=()=>{if(b.dataset.mentor==='correct'){state.reputation+=2;state.xp+=50;toast('+50 XP · Cash-flow lesson complete');sync();p.classList.remove('open')}else toast('A strong owner protects cash flow and listens to customers.')});p.classList.add('open');p.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{if(b.dataset.answer==='correct'){state.cash+=750;state.xp+=100;state.reputation+=3;state.missionStep=1;toast('Mission complete · $750 + 100 XP');$('#mission-card').innerHTML='<small>MISSION COMPLETE</small><strong>Make Your First Move</strong><p>You learned to validate an idea before investing.</p>';sync();p.classList.remove('open')}else toast('Think like an owner: research before spending.')})}
-setInterval(updateBusinessIncome,30000);addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});renderer.setSize(innerWidth,innerHeight);$('#district').textContent=state.district;sync();animate();
+function openStore() {
+  const p = $("#panel");
+  p.innerHTML = `<button class="close">×</button><h2>Greatness Store</h2><p>Optional convenience only. Free players can unlock the complete game and reach endgame.</p><div class="grid">${Object.entries(
+    purchaseCatalog,
+  )
+    .map(
+      ([id, x]) =>
+        `<div class="card"><em>${id.includes("cash") ? "💵" : id.includes("gems") ? "💎" : id.includes("vip") ? "♛" : "🎁"}</em><strong>${x.title}</strong><small>${x.desc}</small><span>${x.price}</span><button data-purchase="${id}">BUY</button></div>`,
+    )
+    .join(
+      "",
+    )}</div><p><small>Purchases are processed securely by Apple App Store or Google Play through RevenueCat. Restore purchases is available from Profile.</small></p>`;
+  p.classList.add("open");
+  p.querySelector(".close").onclick = () => p.classList.remove("open");
+}
+async function purchaseProduct(id) {
+  const product = purchaseCatalog[id];
+  if (!product) return;
+  const bridge = window.SumGreatnessPurchases;
+  if (!bridge?.purchase) {
+    toast("Purchases activate in the installed iOS or Android app.");
+    return;
+  }
+  try {
+    const receipt = await bridge.purchase(id);
+    if (!receipt?.verified) throw new Error("Purchase not verified");
+    if (product.cash) state.cash += product.cash;
+    if (product.gems) state.gems += product.gems;
+    if (
+      product.entitlement &&
+      !state.entitlements.includes(product.entitlement)
+    )
+      state.entitlements.push(product.entitlement);
+    state.purchaseHistory.push({
+      id,
+      date: Date.now(),
+      transactionId: receipt.transactionId,
+    });
+    sync();
+    toast(`${product.title} added successfully`);
+    openStore();
+  } catch (err) {
+    toast(err?.message || "Purchase canceled");
+  }
+}
+async function restorePurchases() {
+  const bridge = window.SumGreatnessPurchases;
+  if (!bridge?.restore) {
+    toast("Restore is available in the installed mobile app.");
+    return;
+  }
+  try {
+    const restored = await bridge.restore();
+    state.entitlements = [
+      ...new Set([...state.entitlements, ...(restored.entitlements || [])]),
+    ];
+    sync();
+    toast("Purchases restored");
+  } catch {
+    toast("Could not restore purchases");
+  }
+}
+const businessCatalog = {
+  "Streetwear Studio": {
+    cost: 2000,
+    base: 45,
+    type: "Clothing",
+    location: "Gaslamp Quarter",
+  },
+  "Greatness Food Truck": {
+    cost: 3500,
+    base: 70,
+    type: "Food",
+    location: "Chula Vista Market",
+  },
+  "Pacific Tech Lab": {
+    cost: 8000,
+    base: 150,
+    type: "Technology",
+    location: "Mission Valley",
+  },
+};
+function getBusiness(name) {
+  if (!state.businessData[name])
+    state.businessData[name] = {
+      name,
+      level: 1,
+      inventory: 50,
+      price: 25,
+      marketing: 0,
+      status: "active",
+      employees: 0,
+    };
+  return state.businessData[name];
+}
+function businessRate(name) {
+  const b = getBusiness(name),
+    cat = businessCatalog[name];
+  if (!cat || b.status !== "active" || b.inventory <= 0) return 0;
+  return Math.max(
+    0,
+    Math.round(
+      cat.base * b.level * (1 + b.employees * 0.25) * (1 + b.marketing * 0.15) -
+        b.employees * 8,
+    ),
+  );
+}
+function updateBusinessIncome() {
+  const mins = Math.floor((Date.now() - state.lastBusinessAt) / 60000);
+  if (mins < 1) return;
+  for (const name of state.businesses) {
+    const b = getBusiness(name),
+      earned = businessRate(name) * mins;
+    state.businessBank += earned;
+    b.inventory = Math.max(0, b.inventory - mins * 2);
+  }
+  state.lastBusinessAt = Date.now();
+  checkAchievements();
+  persist();
+}
+function checkAchievements() {
+  const unlock = (id) => {
+    if (!state.achievements.includes(id)) {
+      state.achievements.push(id);
+      state.gems += 5;
+      toast(`Achievement unlocked · ${id} +5 gems`);
+    }
+  };
+  if (state.businesses.length >= 1) unlock("First Founder");
+  if (state.employees.length >= 3) unlock("Team Builder");
+  if (Object.values(state.businessData).some((b) => b.level >= 2))
+    unlock("Level Up");
+  if (state.cash >= 50000) unlock("Cash Flow King");
+}
+function updateRent() {
+  const minutes = Math.floor((Date.now() - state.lastRentAt) / 60000);
+  if (minutes < 1) return;
+  let income = 0;
+  if (state.properties.includes("East Village Studio")) income += minutes * 90;
+  if (state.properties.includes("Oceanview Mansion"))
+    income += Math.floor(minutes / 60) * 45000;
+  state.rentBank += income;
+  state.lastRentAt = Date.now();
+  persist();
+}
+function openBusiness(name) {
+  const b = getBusiness(name),
+    cat = businessCatalog[name],
+    p = $("#panel");
+  p.innerHTML = `<button class="close">×</button><h2>${b.name}</h2><p>${cat.type} · ${cat.location}</p><div class="grid"><div class="card"><strong>Level ${b.level}</strong><small>Upgrade: $ ${(500 * b.level).toLocaleString()}</small><button data-upgrade-business="${name}">UPGRADE</button></div><div class="card"><strong>${b.employees} Employees</strong><small>Hire cost: $300</small><button data-hire-business="${name}">HIRE</button></div><div class="card"><strong>${b.inventory} Inventory</strong><small>Restock 100: $250</small><button data-restock-business="${name}">RESTOCK</button></div><div class="card"><strong>Price $ ${b.price}</strong><small>Adjust product price</small><button data-price-business="${name}">ADJUST</button></div><div class="card"><strong>Marketing Lv. ${b.marketing}</strong><small>Campaign: $400</small><button data-market-business="${name}">PROMOTE</button></div><div class="card"><strong>${b.status.toUpperCase()}</strong><small>Pause or resume operations</small><button data-toggle-business="${name}">${b.status === "active" ? "PAUSE" : "RESUME"}</button></div></div><div class="choice"><button data-rename-business="${name}">RENAME BUSINESS</button></div>`;
+  p.classList.add("open");
+  p.querySelector(".close").onclick = () => p.classList.remove("open");
+}
+function openPanel(name) {
+  updateBusinessIncome();
+  const p = $("#panel");
+  if (name === "world") {
+    p.classList.remove("open");
+    return;
+  }
+  p.innerHTML = panels[name]();
+  p.classList.add("open");
+  p.querySelector(".close").onclick = () => p.classList.remove("open");
+}
+document.addEventListener("click", (e) => {
+  updateRent();
+  updateBusinessIncome();
+  const panel = e.target.closest("[data-panel]")?.dataset.panel;
+  if (panel) openPanel(panel);
+  const action = e.target.closest("[data-action]")?.dataset.action;
+  if (action === "mode") {
+    state.mode = state.mode === "walk" ? "drive" : "walk";
+    toast(`${state.mode === "walk" ? "Walking" : "Driving"} mode`);
+    sync();
+  }
+  if (action === "interact") {
+    const dist = player.position.distanceTo(npc.position);
+    if (dist < 6) {
+      openConversation();
+    } else toast("Move closer to Maya at the gold marker.");
+  }
+  if (action === "focus-mission") {
+    player.position.set(3, 0, 1);
+    toast("Mission marker is ahead.");
+  }
+  if (e.target.closest("[data-open-lifestyle]")) openLifestyleMarket();
+  const lifestyle = e.target.closest("[data-lifestyle-id]");
+  if (lifestyle)
+    buyLifestyle(
+      lifestyle.dataset.lifestyleType,
+      lifestyle.dataset.lifestyleId,
+    );
+  const completeMission = Number(
+    e.target.closest("[data-complete-mission]")?.dataset.completeMission,
+  );
+  if (completeMission) {
+    const m = missions.find((x) => x.id === completeMission);
+    if (m && !state.completedMissions.includes(m.id)) {
+      state.completedMissions.push(m.id);
+      state.cash += m.reward.cash;
+      state.xp += m.reward.xp;
+      state.gems += m.reward.gems;
+      state.reputation += 2;
+      state.activeMissionId = Math.min(80, m.id + 1);
+      toast(`Mission complete · ${m.reward.cash} + ${m.reward.xp} XP`);
+      sync();
+      openPanel("missions");
+    }
+  }
+  const chapter = e.target.closest("[data-view-chapter]")?.dataset.viewChapter;
+  if (chapter) {
+    const list = missions.filter((m) => m.chapter === chapter),
+      p = $("#panel");
+    p.innerHTML = `<button class="close">×</button><h2>${chapter}</h2><div class="grid">${list.map((m) => `<div class="card"><strong>#${m.id} ${m.title}</strong><small>${m.type} · ${m.npc}</small><span>${state.completedMissions.includes(m.id) ? "Completed" : m.objective}</span></div>`).join("")}</div>`;
+    p.querySelector(".close").onclick = () => p.classList.remove("open");
+  }
+  if (e.target.closest("[data-open-store]")) openStore();
+  if (e.target.closest("[data-restore-purchases]")) restorePurchases();
+  const product = e.target.closest("[data-purchase]")?.dataset.purchase;
+  if (product) purchaseProduct(product);
+  const manage = e.target.closest("[data-manage-business]")?.dataset
+    .manageBusiness;
+  if (manage) openBusiness(manage);
+  const start = e.target.closest("[data-start-business]")?.dataset
+    .startBusiness;
+  if (start) {
+    const c = businessCatalog[start];
+    if (state.cash < c.cost) return toast("You need more cash.");
+    state.cash -= c.cost;
+    state.businesses.push(start);
+    getBusiness(start);
+    state.xp += 100;
+    state.reputation += 5;
+    checkAchievements();
+    toast(`${start} launched!`);
+    sync();
+    openPanel("empire");
+  }
+  if (e.target.closest("[data-collect-business]")) {
+    if (!state.businessBank) return toast("No business earnings ready yet.");
+    state.cash += state.businessBank;
+    toast(`Collected ${state.businessBank.toLocaleString()} business profit`);
+    state.businessBank = 0;
+    checkAchievements();
+    sync();
+    openPanel("empire");
+  }
+  const bizAction = e.target.closest(
+    "[data-upgrade-business],[data-hire-business],[data-restock-business],[data-price-business],[data-market-business],[data-toggle-business],[data-rename-business]",
+  );
+  if (bizAction) {
+    const name =
+        bizAction.dataset.upgradeBusiness ||
+        bizAction.dataset.hireBusiness ||
+        bizAction.dataset.restockBusiness ||
+        bizAction.dataset.priceBusiness ||
+        bizAction.dataset.marketBusiness ||
+        bizAction.dataset.toggleBusiness ||
+        bizAction.dataset.renameBusiness,
+      b = getBusiness(name);
+    if (bizAction.dataset.upgradeBusiness) {
+      const cost = 500 * b.level;
+      if (state.cash < cost) return toast("You need more cash.");
+      state.cash -= cost;
+      b.level++;
+    }
+    if (bizAction.dataset.hireBusiness) {
+      if (state.cash < 300) return toast("You need more cash.");
+      state.cash -= 300;
+      b.employees++;
+      state.employees.push({
+        name: `Employee ${state.employees.length + 1}`,
+        business: name,
+        role: b.employees === 1 ? "Manager" : "Associate",
+        skill: 1,
+      });
+    }
+    if (bizAction.dataset.restockBusiness) {
+      if (state.cash < 250) return toast("You need more cash.");
+      state.cash -= 250;
+      b.inventory += 100;
+    }
+    if (bizAction.dataset.priceBusiness)
+      b.price = b.price >= 45 ? 15 : b.price + 5;
+    if (bizAction.dataset.marketBusiness) {
+      if (state.cash < 400) return toast("You need more cash.");
+      state.cash -= 400;
+      b.marketing++;
+    }
+    if (bizAction.dataset.toggleBusiness)
+      b.status = b.status === "active" ? "paused" : "active";
+    if (bizAction.dataset.renameBusiness) {
+      const n = prompt("Enter a new business name", b.name);
+      if (n?.trim()) b.name = n.trim().slice(0, 28);
+    }
+    checkAchievements();
+    sync();
+    openBusiness(name);
+  }
+  const avatar = e.target.closest("[data-avatar]")?.dataset.avatar;
+  if (avatar) {
+    state.avatar.style = avatar;
+    toast(`${avatar} character selected`);
+    sync();
+    openPanel("profile");
+  }
+  const outfit = e.target.closest("[data-outfit]")?.dataset.outfit;
+  if (outfit) {
+    state.avatar.outfit = outfit;
+    const colors = {
+      "Midnight Gold": 0x13110f,
+      "Royal Burgundy": 0x661f36,
+      "Ocean Blue": 0x173f65,
+    };
+    player.userData.body.material.color.setHex(colors[outfit]);
+    toast(`${outfit} equipped`);
+    sync();
+  }
+  const vehicle = e.target.closest("[data-vehicle]");
+  if (vehicle) {
+    const name = vehicle.dataset.vehicle,
+      price = Number(vehicle.dataset.price);
+    if (state.vehicles.includes(name))
+      return toast("You already own this vehicle.");
+    if (state.vehicles.length >= state.garageCapacity)
+      return toast("Your garage is full.");
+    if (state.cash < price) return toast("You need more cash.");
+    state.cash -= price;
+    state.vehicles.push(name);
+    state.ownedVehicle = name;
+    toast(`${name} added to your garage`);
+    sync();
+    openPanel("empire");
+  }
+  const property = e.target.closest("[data-property]");
+  if (property) {
+    const name = property.dataset.property,
+      price = Number(property.dataset.price);
+    if (state.properties.includes(name))
+      return toast("You already own this property.");
+    if (state.cash < price) return toast("You need more cash.");
+    state.cash -= price;
+    state.properties.push(name);
+    state.lastRentAt = Date.now();
+    toast(`${name} purchased · rental income active`);
+    sync();
+    openPanel("empire");
+  }
+  if (e.target.closest("[data-collect-rent]")) {
+    if (!state.rentBank) return toast("No rental income ready yet.");
+    state.cash += state.rentBank;
+    toast(`Collected ${state.rentBank.toLocaleString()} rent`);
+    state.rentBank = 0;
+    sync();
+    openPanel("empire");
+  }
+  const buy = e.target.closest("[data-buy]");
+  if (buy) {
+    if (state.businesses.includes("Streetwear Studio"))
+      return toast("You already own this business.");
+    if (state.cash < 2000) return toast("You need more cash.");
+    state.cash -= 2000;
+    state.businesses.push("Streetwear Studio");
+    state.xp += 100;
+    state.reputation += 5;
+    toast("Streetwear Studio launched!");
+    sync();
+    openPanel("empire");
+  }
+  const lesson = e.target.closest("[data-lesson]")?.dataset.lesson;
+  if (lesson) {
+    if (!state.lessons.includes(lesson)) {
+      state.lessons.push(lesson);
+      state.xp += 25;
+      toast("+25 XP · Lesson completed");
+      sync();
+    }
+    openPanel("learn");
+  }
+});
+function openConversation() {
+  const p = $("#panel");
+  const completed = state.missionStep > 0;
+  p.innerHTML = completed
+    ? `<h2>Maya · Local Business Mentor</h2><p>“Now protect your cash flow. Which move makes a young business more sustainable?”</p><div class="choice"><button data-mentor="correct">Keep an emergency reserve and track expenses</button><button data-mentor="wrong">Spend every dollar as soon as it arrives</button><button data-mentor="wrong">Ignore customer feedback</button></div>`
+    : `<h2>Maya · Local Business Mentor</h2><p>“Great businesses solve a real problem. Before spending your money, what should you do first?”</p><div class="choice"><button data-answer="correct">Talk to possible customers and test the idea</button><button data-answer="wrong">Spend everything on inventory immediately</button><button data-answer="wrong">Copy a business without researching it</button></div>`;
+  p.querySelectorAll("[data-mentor]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (b.dataset.mentor === "correct") {
+          state.reputation += 2;
+          state.xp += 50;
+          toast("+50 XP · Cash-flow lesson complete");
+          sync();
+          p.classList.remove("open");
+        } else
+          toast("A strong owner protects cash flow and listens to customers.");
+      }),
+  );
+  p.classList.add("open");
+  p.querySelectorAll("[data-answer]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        if (b.dataset.answer === "correct") {
+          state.cash += 750;
+          state.xp += 100;
+          state.reputation += 3;
+          state.missionStep = 1;
+          toast("Mission complete · $750 + 100 XP");
+          $("#mission-card").innerHTML =
+            "<small>MISSION COMPLETE</small><strong>Make Your First Move</strong><p>You learned to validate an idea before investing.</p>";
+          sync();
+          p.classList.remove("open");
+        } else toast("Think like an owner: research before spending.");
+      }),
+  );
+}
+setInterval(updateBusinessIncome, 30000);
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+renderer.setSize(innerWidth, innerHeight);
+$("#district").textContent = state.district;
+sync();
+animate();
