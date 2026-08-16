@@ -27,3 +27,11 @@
 @media(orientation:landscape) and (max-height:600px){.action-stack{grid-template-columns:repeat(3,58px)}.action-stack button{width:58px}}
 #minimap{position:fixed;z-index:3;top:8px;left:50%;transform:translateX(-50%);width:150px;height:85px;border:2px solid #e7b84f;border-radius:3px;background:#102d3f;box-shadow:0 3px 14px #000c;opacity:.9;pointer-events:none}
 @media(orientation:landscape) and (max-height:600px){#minimap{top:max(5px,env(safe-area-inset-top));width:112px;height:64px;border-width:1px}}
+
+/* Driving HUD stays out of the way until the player enters a vehicle. */
+#speedometer{position:fixed;z-index:3;right:112px;bottom:104px;min-width:104px;padding:8px 12px;display:none;grid-template-columns:auto auto;align-items:end;gap:0 6px;background:linear-gradient(145deg,rgba(5,7,9,.9),rgba(20,24,28,.82));border-left:3px solid var(--gold);box-shadow:0 4px 18px #000a;pointer-events:none}
+#speedometer.visible{display:grid}
+#speedometer strong{font-size:30px;line-height:.9;font-variant-numeric:tabular-nums;color:#fff}
+#speedometer span{font-size:9px;letter-spacing:1px;color:var(--gold)}
+#speedometer small{grid-column:1/-1;margin-top:5px;max-width:128px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px;letter-spacing:.8px;color:#b9c0c5;text-transform:uppercase}
+@media(orientation:landscape) and (max-height:600px){#speedometer{right:max(84px,calc(env(safe-area-inset-right) + 72px));bottom:57px;min-width:76px;padding:5px 8px}#speedometer strong{font-size:22px}#speedometer span{font-size:7px}#speedometer small{font-size:6px;max-width:96px}}
