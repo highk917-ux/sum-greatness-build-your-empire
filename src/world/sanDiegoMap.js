@@ -21,7 +21,7 @@ export const SAN_DIEGO_DISTRICTS=[
  {name:'La Mesa',x:590,z:-10,radius:200,density:14,height:[7,24]},
  {name:'El Cajon',x:900,z:-120,radius:245,density:20,height:[7,30]}
 ];
-const FREEWAYS=[
+export const SAN_DIEGO_FREEWAYS=[
  {name:'I-5',width:24,points:[[-85,1120],[-70,650],[-60,250],[-65,-80],[-115,-410],[-175,-760],[-160,-1160],[-120,-1620]]},
  {name:'I-805',width:22,points:[[270,1100],[255,720],[245,350],[250,0],[255,-420],[230,-820],[190,-1320]]},
  {name:'I-8',width:24,points:[[-470,-500],[-220,-495],[40,-485],[340,-470],[650,-455],[980,-430]]},
@@ -39,11 +39,11 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  const ocean=new THREE.Mesh(new THREE.PlaneGeometry(900,3400),waterMat);ocean.rotation.x=-Math.PI/2;ocean.position.set(-980,-.02,-150);scene.add(ocean);
  const bay=new THREE.Mesh(new THREE.PlaneGeometry(285,690),waterMat);bay.rotation.x=-Math.PI/2;bay.position.set(-300,.02,120);scene.add(bay);
  const coronado=new THREE.Mesh(new THREE.PlaneGeometry(125,610),landMat);coronado.rotation.x=-Math.PI/2;coronado.position.set(-390,.035,250);scene.add(coronado);
- for(const freeway of FREEWAYS){for(let i=1;i<freeway.points.length;i++){const a=freeway.points[i-1],b=freeway.points[i];roadSegment(scene,freewayMat,a,b,freeway.width);roadSegment(scene,lineMat,a,b,.7,.055)}const middle=freeway.points[Math.floor(freeway.points.length/2)],sign=labelSprite(freeway.name,'#62a5ff',11);sign.position.set(middle[0],13,middle[1]);scene.add(sign)}
+ for(const freeway of SAN_DIEGO_FREEWAYS){for(let i=1;i<freeway.points.length;i++){const a=freeway.points[i-1],b=freeway.points[i];roadSegment(scene,freewayMat,a,b,freeway.width);roadSegment(scene,lineMat,a,b,.7,.055)}const middle=freeway.points[Math.floor(freeway.points.length/2)],sign=labelSprite(freeway.name,'#62a5ff',11);sign.position.set(middle[0],13,middle[1]);scene.add(sign)}
  roadSegment(scene,roadMat,[-390,120],[-65,145],12,.065);
  const surfaceRoads=[[[-430,-260],[930,-110]],[[-300,-650],[600,-650]],[[-300,-1070],[300,-1070]],[[-150,790],[500,790]],[[-120,0],[340,0]],[[0,-190],[0,320]],[[190,430],[190,980]]];for(const [a,b] of surfaceRoads)roadSegment(scene,roadMat,a,b,10,.06);
  const colors=[0x65584a,0x344c5e,0x705348,0x505b63,0x8a806c],materials=colors.map(color=>new THREE.MeshStandardMaterial({color,roughness:.74})),unitBox=new THREE.BoxGeometry(1,1,1);
- for(const district of SAN_DIEGO_DISTRICTS){const count=mobileDevice?Math.max(5,Math.round(district.density*.48)):district.density;for(let i=0;i<count;i++){const angle=rng()*Math.PI*2,distance=35+rng()*(district.radius-45),x=district.x+Math.cos(angle)*distance,z=district.z+Math.sin(angle)*distance;if(FREEWAYS.some(f=>f.points.some(p=>Math.hypot(x-p[0],z-p[1])<28)))continue;const width=10+rng()*15,depth=10+rng()*15,height=district.height[0]+rng()*(district.height[1]-district.height[0]),building=new THREE.Mesh(unitBox,materials[Math.floor(rng()*materials.length)]);building.scale.set(width,height,depth);building.position.set(x,height/2,z);building.castShadow=!mobileDevice;scene.add(building);colliders.push({minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2})}}
+ for(const district of SAN_DIEGO_DISTRICTS){const count=mobileDevice?Math.max(5,Math.round(district.density*.48)):district.density;for(let i=0;i<count;i++){const angle=rng()*Math.PI*2,distance=35+rng()*(district.radius-45),x=district.x+Math.cos(angle)*distance,z=district.z+Math.sin(angle)*distance;if(SAN_DIEGO_FREEWAYS.some(f=>f.points.some(p=>Math.hypot(x-p[0],z-p[1])<28)))continue;const width=10+rng()*15,depth=10+rng()*15,height=district.height[0]+rng()*(district.height[1]-district.height[0]),building=new THREE.Mesh(unitBox,materials[Math.floor(rng()*materials.length)]);building.scale.set(width,height,depth);building.position.set(x,height/2,z);building.castShadow=!mobileDevice;scene.add(building);colliders.push({minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2})}}
  // Recognizable destination silhouettes placed in their real general parts of the region.
  addLandmark(scene,colliders,{name:'PETCO PARK',x:105,z:155,w:72,d:58,h:18,color:0x607949});
  addLandmark(scene,colliders,{name:'CONVENTION CENTER',x:-20,z:115,w:95,d:22,h:16,color:0xaeb4b8});
