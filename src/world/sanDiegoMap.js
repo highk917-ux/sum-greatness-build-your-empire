@@ -27,7 +27,25 @@ export const SAN_DIEGO_FREEWAYS=[
  {name:'I-8',width:24,points:[[-470,-500],[-220,-495],[40,-485],[340,-470],[650,-455],[980,-430]]},
  {name:'SR-163',width:19,points:[[35,-60],[65,-190],[80,-330],[65,-470]]},
  {name:'SR-94',width:20,points:[[-55,145],[180,135],[430,120],[690,100],[940,80]]},
- {name:'I-15',width:21,points:[[480,980],[465,620],[470,260],[485,-120],[470,-520],[430,-920]]}
+ {name:'I-15',width:21,points:[[480,980],[465,620],[470,260],[485,-120],[470,-520],[430,-920]]},
+ {name:'SR-52',width:18,points:[[-175,-900],[40,-905],[250,-890],[450,-875],[690,-850]]},
+ {name:'SR-54',width:18,points:[[-55,610],[150,600],[365,590],[610,570]]},
+ {name:'SR-125',width:18,points:[[610,1220],[625,900],[620,590],[640,250],[675,-120],[690,-520]]},
+ {name:'SR-905',width:18,points:[[-35,1240],[175,1230],[380,1215],[575,1190]]},
+ {name:'SR-75',width:14,points:[[-390,650],[-395,430],[-390,250],[-300,130],[-65,145]]}
+];
+export const SAN_DIEGO_ARTERIALS=[
+ {name:'Harbor Drive',width:11,points:[[-260,-50],[-180,70],[-90,220],[20,300]]},
+ {name:'Broadway',width:12,points:[[-120,0],[100,0],[340,0]]},
+ {name:'Market Street',width:11,points:[[-100,85],[120,82],[340,75]]},
+ {name:'El Cajon Boulevard',width:12,points:[[15,-205],[270,-190],[540,-155],[820,-120]]},
+ {name:'University Avenue',width:11,points:[[95,-300],[310,-275],[520,-245],[720,-210]]},
+ {name:'Friars Road',width:12,points:[[-120,-545],[120,-525],[390,-500],[650,-470]]},
+ {name:'Balboa Avenue',width:12,points:[[-215,-885],[40,-880],[300,-860],[565,-825]]},
+ {name:'La Jolla Village Drive',width:11,points:[[-345,-1160],[-130,-1170],[90,-1175],[260,-1160]]},
+ {name:'H Street',width:12,points:[[-150,790],[90,790],[300,790],[500,790]]},
+ {name:'Palm Avenue',width:12,points:[[-80,1100],[130,1095],[340,1090],[560,1080]]},
+ {name:'Jamacha Road',width:11,points:[[470,125],[650,130],[825,145],[1010,175]]}
 ];
 export const SAN_DIEGO_WATER_AREAS=[
  {name:'Pacific Ocean',points:[[-650,-1720],[-175,-1720],[-165,-1540],[-235,-1320],[-310,-1080],[-300,-860],[-365,-690],[-465,-545],[-525,-310],[-505,-80],[-485,250],[-445,620],[-390,980],[-345,1420],[-650,1420]]},
@@ -57,8 +75,9 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  function registerLandRoad(a,b,width,material=roadMat,sidewalks=true){const length=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.max(2,Math.ceil(length/16));let start=null,previous=null;for(let i=0;i<=steps;i++){const t=i/steps,point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],inWater=SAN_DIEGO_WATER_AREAS.some(area=>waterContains(area,point[0],point[1],width/2));if(!inWater){if(!start)start=point;previous=point}else if(start&&previous){if(Math.hypot(previous[0]-start[0],previous[1]-start[1])>5)registerRoad(start,previous,width,material,sidewalks);start=previous=null}}if(start&&previous&&Math.hypot(previous[0]-start[0],previous[1]-start[1])>5)registerRoad(start,previous,width,material,sidewalks)}
  for(const freeway of SAN_DIEGO_FREEWAYS){for(let i=1;i<freeway.points.length;i++)roadCorridors.push({a:freeway.points[i-1],b:freeway.points[i],width:freeway.width})}
  registerRoad([-390,120],[-65,145],12);
- const surfaceRoads=[[[-430,-260],[930,-110]],[[-300,-650],[600,-650]],[[-300,-1070],[300,-1070]],[[-150,790],[500,790]],[[-120,0],[340,0]],[[0,-190],[0,320]],[[190,430],[190,980]]];
- for(const [a,b] of surfaceRoads)registerRoad(a,b,12);
+ const surfaceRoads=[[[-430,-260],[930,-110]],[[-300,-650],[600,-650]],[[0,-190],[0,320]],[[190,430],[190,980]]];
+ for(const [a,b] of surfaceRoads)registerLandRoad(a,b,12);
+ for(const arterial of SAN_DIEGO_ARTERIALS){for(let i=1;i<arterial.points.length;i++)registerLandRoad(arterial.points[i-1],arterial.points[i],arterial.width);const middle=arterial.points[Math.floor(arterial.points.length/2)],sign=labelSprite(arterial.name,'#ffffff',8);sign.position.set(middle[0],9,middle[1]);scene.add(sign)}
  // Each district receives a recognizable street grid: two main streets with sidewalks
  // plus two narrow service alleys behind the building rows.
  for(const district of SAN_DIEGO_DISTRICTS){
