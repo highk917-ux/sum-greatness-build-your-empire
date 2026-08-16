@@ -15,8 +15,8 @@ addEventListener('pointerdown',lockLandscape,{once:true});
 
 const mobileDevice=matchMedia('(pointer:coarse)').matches;
 const renderer=new THREE.WebGLRenderer({canvas:$('#world'),antialias:!mobileDevice,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,mobileDevice?1:1.6));renderer.shadowMap.enabled=!mobileDevice;renderer.outputColorSpace=THREE.SRGBColorSpace;
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x7aa1bd);scene.fog=new THREE.Fog(0x9bb2bd,42,235);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,2400);camera.position.set(0,4.6,15);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x7aa1bd);scene.fog=new THREE.Fog(0x9bb2bd,110,1100);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,10000);camera.position.set(0,4.6,15);
 scene.add(new THREE.HemisphereLight(0xffe0bb,0x263429,2.7));const sun=new THREE.DirectionalLight(0xffc77a,2.6);sun.position.set(-20,28,12);sun.castShadow=!mobileDevice;scene.add(sun);
 const goldMat=new THREE.MeshStandardMaterial({color:0xd5a840,metalness:.7,roughness:.25});
 const {colliders:buildingColliders}=buildSanDiegoMap(scene,{mobileDevice});
