@@ -2,6 +2,14 @@ import * as THREE from 'three';
 
 const SHIRT_COLORS = [0x8b2f56, 0x225b7c, 0xc4772b, 0x315f45, 0x4a3f72, 0xb6a174];
 const SKIN_TONES = [0x4c2d20, 0x70422f, 0x8f5d45, 0xb77958, 0xd29a72];
+const BUSINESS_CONTACTS = [
+  { id: 'nina', name: 'Nina', role: 'Coffee Shop Owner', question: 'What should you test before signing a long lease?', correct: 'Customer demand with a small pop-up', wrong: 'The most expensive storefront', takeaway: 'Validate demand cheaply before accepting a large fixed cost.' },
+  { id: 'marcus', name: 'Marcus', role: 'Delivery Operator', question: 'Which number helps protect daily operations?', correct: 'Available cash flow', wrong: 'Social media followers alone', takeaway: 'Cash flow keeps inventory, payroll, and bills moving.' },
+  { id: 'elena', name: 'Elena', role: 'Market Vendor', question: 'What makes customer interviews useful?', correct: 'Ask about real problems and buying habits', wrong: 'Only ask if they like your logo', takeaway: 'Good research focuses on customer behavior, not compliments.' },
+  { id: 'darius', name: 'Darius', role: 'Streetwear Founder', question: 'What reduces the risk of excess inventory?', correct: 'Start with a small production run', wrong: 'Order the maximum quantity immediately', takeaway: 'Small batches let demand guide the next investment.' },
+  { id: 'mei', name: 'Mei', role: 'Bookkeeper', question: 'Which money should stay separate?', correct: 'Business and personal funds', wrong: 'There is no reason to separate money', takeaway: 'Separate accounts make records, taxes, and decisions clearer.' },
+  { id: 'carlos', name: 'Carlos', role: 'Property Manager', question: 'What belongs in a rental budget?', correct: 'Repairs, vacancies, taxes, and insurance', wrong: 'Only the monthly mortgage', takeaway: 'Real profit includes every operating cost and a repair reserve.' },
+];
 
 function isLikelyLand(x, z) {
   // Keep pedestrians out of the Pacific and the broad Mission/San Diego bay water areas.
@@ -46,6 +54,7 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
     pedestrian.userData.heading = 0;
     pedestrian.userData.turnIn = 0;
     pedestrian.userData.stuck = 0;
+    pedestrian.userData.profile = BUSINESS_CONTACTS[index % BUSINESS_CONTACTS.length];
     scene.add(pedestrian);
     pedestrians.push(pedestrian);
     findSpawn(pedestrian, 18 + index * 2);
@@ -94,5 +103,19 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
     }
   }
 
-  return { pedestrians, update };
+  function getNearest(position, maxDistance = 6) {
+    let nearest = null;
+    let nearestDistance = maxDistance;
+    for (const pedestrian of pedestrians) {
+      if (!pedestrian.visible) continue;
+      const distance = pedestrian.position.distanceTo(position);
+      if (distance < nearestDistance) {
+        nearest = pedestrian;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  }
+
+  return { pedestrians, update, getNearest };
 }
