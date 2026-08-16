@@ -27,3 +27,8 @@
 @media(orientation:landscape) and (max-height:600px){.action-stack{grid-template-columns:repeat(3,58px)}.action-stack button{width:58px}}
 #minimap{position:fixed;z-index:3;top:8px;left:50%;transform:translateX(-50%);width:150px;height:85px;border:2px solid #e7b84f;border-radius:3px;background:#102d3f;box-shadow:0 3px 14px #000c;opacity:.9;pointer-events:none}
 @media(orientation:landscape) and (max-height:600px){#minimap{top:max(5px,env(safe-area-inset-top));width:112px;height:64px;border-width:1px}}
+
+/* Live mission tracker states */
+#mission-distance{font-size:inherit;letter-spacing:.4px}
+.mission.near{border-color:var(--gold);box-shadow:0 0 18px rgba(231,184,79,.32),0 12px 40px #0008}
+.mission.near button{background:linear-gradient(#f0c65b,#8b5d12);color:#090806;border-color:#ffe6a0}
