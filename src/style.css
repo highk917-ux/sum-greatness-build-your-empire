@@ -23,3 +23,5 @@
 .card{border-radius:2px;background:#ffffff0a;border:1px solid var(--hud-line)}
 #toast{border-radius:2px;border:0;border-left:3px solid var(--gold);font-weight:900;text-transform:uppercase}
 @media(orientation:landscape) and (max-height:600px){.topbar{display:block;min-height:0;padding:0;background:none;border:0;box-shadow:none;pointer-events:none}.brand{display:none}.wallet{position:fixed;z-index:6;top:max(5px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));gap:9px}.wallet span{padding:2px 4px;background:#050709b8;border-radius:2px;font-size:8px;font-weight:900;text-shadow:0 2px 2px #000}.mission{top:max(30px,calc(env(safe-area-inset-top) + 27px));width:190px}.location{width:148px}.nav{border-radius:2px 2px 0 0;height:42px;max-width:390px}.nav .play{width:44px;height:44px;margin-top:-9px}.nav span{font-size:12px}.controls{bottom:48px}.panel{bottom:46px}}
+#run-btn.active{background:linear-gradient(#f0c65b,#8b5d12);color:#090806;border-color:#ffe6a0;box-shadow:0 0 12px #e7b84f99}
+@media(orientation:landscape) and (max-height:600px){.action-stack{grid-template-columns:repeat(3,58px)}.action-stack button{width:58px}}
