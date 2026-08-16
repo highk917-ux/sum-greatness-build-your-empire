@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './style.css';
 import { missions, missionChapters } from './data/missions.js';
+import { buildSanDiegoMap, districtAt, SAN_DIEGO_BOUNDS } from './world/sanDiegoMap.js';
 
 const saveKey='sum-greatness-save-v1';
 const defaultState={cash:2500,gems:25,energy:100,xp:120,level:1,reputation:5,mode:'walk',missionStep:0,businesses:[],properties:[],vehicles:['Metro Pass'],lessons:[],playerName:'Founder',avatar:{style:'Executive',outfit:'Midnight Gold',skin:'#7b4b34'},district:'Gaslamp Quarter',garageCapacity:3,rentBank:0,lastRentAt:Date.now(),ownedVehicle:'Metro Pass',businessBank:0,lastBusinessAt:Date.now(),businessData:{},employees:[],achievements:[],entitlements:[],purchaseHistory:[],completedMissions:[],activeMissionId:1,gear:[],equippedGear:'Midnight Gold Suit',activeHome:'Starter Apartment'};
@@ -14,17 +15,11 @@ addEventListener('pointerdown',lockLandscape,{once:true});
 
 const mobileDevice=matchMedia('(pointer:coarse)').matches;
 const renderer=new THREE.WebGLRenderer({canvas:$('#world'),antialias:!mobileDevice,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,mobileDevice?1:1.6));renderer.shadowMap.enabled=!mobileDevice;renderer.outputColorSpace=THREE.SRGBColorSpace;
-const WORLD_HALF=150;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x7aa1bd);scene.fog=new THREE.Fog(0x9bb2bd,42,235);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,320);camera.position.set(0,4.6,15);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,2400);camera.position.set(0,4.6,15);
 scene.add(new THREE.HemisphereLight(0xffe0bb,0x263429,2.7));const sun=new THREE.DirectionalLight(0xffc77a,2.6);sun.position.set(-20,28,12);sun.castShadow=!mobileDevice;scene.add(sun);
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(WORLD_HALF*2+20,WORLD_HALF*2+20),new THREE.MeshStandardMaterial({color:0x415b39,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
-const roadMat=new THREE.MeshStandardMaterial({color:0x24272b,roughness:.85});
-for(let i=-120;i<=120;i+=30){const road=new THREE.Mesh(new THREE.PlaneGeometry(12,WORLD_HALF*2),roadMat);road.rotation.x=-Math.PI/2;road.position.set(i,.015,0);scene.add(road);const cross=road.clone();cross.rotation.z=Math.PI/2;cross.position.set(0,.02,i);scene.add(cross)}
 const goldMat=new THREE.MeshStandardMaterial({color:0xd5a840,metalness:.7,roughness:.25});
-const buildingColliders=[];
-const cityStep=mobileDevice?30:15;
-for(let x=-135;x<=135;x+=cityStep)for(let z=-135;z<=135;z+=cityStep){if(Math.abs(x%30)<7||Math.abs(z%30)<7)continue;const downtown=Math.abs(x)<48&&Math.abs(z)<48,h=THREE.MathUtils.randFloat(downtown?15:5,downtown?42:19);const colors=[0x665947,0x31495a,0x6c5148,0x4b545a];const b=new THREE.Mesh(new THREE.BoxGeometry(9,h,9),new THREE.MeshStandardMaterial({color:colors[Math.floor(Math.random()*colors.length)],roughness:.72}));b.position.set(x,h/2,z);b.castShadow=!mobileDevice;b.receiveShadow=!mobileDevice;scene.add(b);buildingColliders.push({minX:x-4.5,maxX:x+4.5,minZ:z-4.5,maxZ:z+4.5});if(!mobileDevice)for(let y=2;y<h-1;y+=4){const band=new THREE.Mesh(new THREE.BoxGeometry(9.05,.35,9.05),goldMat);band.position.set(x,y,z);scene.add(band)}}
+const {colliders:buildingColliders}=buildSanDiegoMap(scene,{mobileDevice});
 function makePerson(color=0x111111,skin=0x6f402c){
  const g=new THREE.Group(),skinMat=new THREE.MeshStandardMaterial({color:skin,roughness:.7}),shirtMat=new THREE.MeshStandardMaterial({color,roughness:.72}),jeansMat=new THREE.MeshStandardMaterial({color:0x24364b,roughness:.82}),shoeMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.42}),hairMat=new THREE.MeshStandardMaterial({color:0x080605,roughness:.9});
  const part=(geometry,material,x,y,z)=>{const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.castShadow=!mobileDevice;g.add(mesh);return mesh};
@@ -46,10 +41,10 @@ let cameraYaw=0,cameraPitch=.02,cameraDrag=null;const worldCanvas=$('#world');
 worldCanvas.addEventListener('pointerdown',e=>{cameraDrag={id:e.pointerId,x:e.clientX,y:e.clientY};worldCanvas.setPointerCapture(e.pointerId)});
 worldCanvas.addEventListener('pointermove',e=>{if(!cameraDrag||cameraDrag.id!==e.pointerId)return;const dx=e.clientX-cameraDrag.x,dy=e.clientY-cameraDrag.y;cameraYaw-=dx*.006;cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.004,-.22,.28);cameraDrag.x=e.clientX;cameraDrag.y=e.clientY});
 worldCanvas.addEventListener('pointerup',()=>cameraDrag=null);worldCanvas.addEventListener('pointercancel',()=>cameraDrag=null);
-function districtFor(x,z){if(z<-90)return'La Jolla Coast';if(z>90)return'Chula Vista Market';if(x<-90)return'Barrio Logan Arts';if(x>90)return'Mission Valley';if(z<-35)return'Waterfront District';if(z>35)return'North Park';if(x<-35)return'Little Italy';if(x>35)return'East Village';return'Gaslamp Quarter'}
+function districtFor(x,z){return districtAt(x,z,state.district)}
 function positionIsClear(x,z,radius){return !buildingColliders.some(b=>x+radius>b.minX&&x-radius<b.maxX&&z+radius>b.minZ&&z-radius<b.maxZ)}
 function moveWithCollisions(direction,distance){
- const radius=state.mode==='drive'?1.25:.65,nextX=THREE.MathUtils.clamp(player.position.x+direction.x*distance,-WORLD_HALF,WORLD_HALF),nextZ=THREE.MathUtils.clamp(player.position.z+direction.z*distance,-WORLD_HALF,WORLD_HALF);
+ const radius=state.mode==='drive'?1.25:.65,nextX=THREE.MathUtils.clamp(player.position.x+direction.x*distance,SAN_DIEGO_BOUNDS.minX,SAN_DIEGO_BOUNDS.maxX),nextZ=THREE.MathUtils.clamp(player.position.z+direction.z*distance,SAN_DIEGO_BOUNDS.minZ,SAN_DIEGO_BOUNDS.maxZ);
  // Resolve each axis separately so the player slides along a wall instead of sticking to it.
  if(positionIsClear(nextX,player.position.z,radius))player.position.x=nextX;
  if(positionIsClear(player.position.x,nextZ,radius))player.position.z=nextZ;
