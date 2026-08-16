@@ -35,7 +35,18 @@ function roadClearance(x,z,radius,roads){return roads.every(road=>{for(let i=1;i
 function parallelSegment(a,b,offset){const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz)||1,nx=-dz/length,nz=dx/length;return [[a[0]+nx*offset,a[1]+nz*offset],[b[0]+nx*offset,b[1]+nz*offset]]}
 function seeded(seed){let value=seed>>>0;return()=>{value=(value*1664525+1013904223)>>>0;return value/4294967296}}
 function labelSprite(text,color='#e7b84f',scale=22){const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');canvas.width=512;canvas.height=96;ctx.fillStyle='rgba(7,9,12,.82)';ctx.roundRect(4,4,504,88,18);ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=5;ctx.stroke();ctx.fillStyle='#fff';ctx.font='bold 36px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,49);const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),depthTest:false}));sprite.scale.set(scale*4,scale*.75,1);return sprite}
-function addLandmark(scene,colliders,{name,x,z,w,d,h,color=0x9a895f,labelHeight=h+12}){const material=new THREE.MeshStandardMaterial({color,roughness:.65}),building=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);building.position.set(x,h/2,z);scene.add(building);colliders.push({minX:x-w/2,maxX:x+w/2,minZ:z-d/2,maxZ:z+d/2});const label=labelSprite(name);label.position.set(x,labelHeight,z);scene.add(label)}
+function nearestClearLandmarkPosition(x,z,w,d,roads){
+ const clearance=Math.hypot(w,d)/2+4;
+ if(roadClearance(x,z,clearance,roads))return {x,z};
+ // Preserve the landmark's general geographic location while guaranteeing that
+ // its complete footprint (plus a pedestrian buffer) stays outside roadways.
+ for(let radius=18;radius<=120;radius+=12)for(let step=0;step<16;step++){
+  const angle=step/16*Math.PI*2,candidateX=x+Math.cos(angle)*radius,candidateZ=z+Math.sin(angle)*radius;
+  if(roadClearance(candidateX,candidateZ,clearance,roads))return {x:candidateX,z:candidateZ};
+ }
+ return {x,z};
+}
+function addLandmark(scene,colliders,roads,{name,x,z,w,d,h,color=0x9a895f,labelHeight=h+12}){const position=nearestClearLandmarkPosition(x,z,w,d,roads),material=new THREE.MeshStandardMaterial({color,roughness:.65}),building=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);building.position.set(position.x,h/2,position.z);scene.add(building);colliders.push({minX:position.x-w/2,maxX:position.x+w/2,minZ:position.z-d/2,maxZ:position.z+d/2});const label=labelSprite(name);label.position.set(position.x,labelHeight,position.z);scene.add(label)}
 export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  const colliders=[],rng=seeded(917),landMat=new THREE.MeshStandardMaterial({color:0x52694a,roughness:1}),waterMat=new THREE.MeshStandardMaterial({color:0x17658b,roughness:.38}),roadMat=new THREE.MeshStandardMaterial({color:0x282b30,roughness:.9}),freewayMat=new THREE.MeshStandardMaterial({color:0x343940,roughness:.82}),lineMat=new THREE.MeshBasicMaterial({color:0xd5a840}),laneMat=new THREE.MeshBasicMaterial({color:0xe8e5d8}),sidewalkMat=new THREE.MeshStandardMaterial({color:0xa8a49a,roughness:1});
  const land=new THREE.Mesh(new THREE.PlaneGeometry(1800,3200),landMat);land.rotation.x=-Math.PI/2;land.position.set(250,0,-150);scene.add(land);
@@ -50,12 +61,12 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  const colors=[0x65584a,0x344c5e,0x705348,0x505b63,0x8a806c],materials=colors.map(color=>new THREE.MeshStandardMaterial({color,roughness:.74})),unitBox=new THREE.BoxGeometry(1,1,1);
  for(const district of SAN_DIEGO_DISTRICTS){const target=mobileDevice?Math.max(5,Math.round(district.density*.48)):district.density;let placed=0;for(let attempt=0;attempt<target*8&&placed<target;attempt++){const angle=rng()*Math.PI*2,distance=35+rng()*(district.radius-45),x=district.x+Math.cos(angle)*distance,z=district.z+Math.sin(angle)*distance,width=10+rng()*15,depth=10+rng()*15;if(!roadClearance(x,z,Math.max(width,depth)/2+5,protectedRoads))continue;const height=district.height[0]+rng()*(district.height[1]-district.height[0]),building=new THREE.Mesh(unitBox,materials[Math.floor(rng()*materials.length)]);building.scale.set(width,height,depth);building.position.set(x,height/2,z);building.castShadow=!mobileDevice;scene.add(building);colliders.push({minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2});placed++}}
  // Recognizable destination silhouettes placed in their real general parts of the region.
- addLandmark(scene,colliders,{name:'PETCO PARK',x:105,z:155,w:72,d:58,h:18,color:0x607949});
- addLandmark(scene,colliders,{name:'CONVENTION CENTER',x:-20,z:115,w:95,d:22,h:16,color:0xaeb4b8});
- addLandmark(scene,colliders,{name:'BALBOA PARK',x:135,z:-175,w:22,d:22,h:48,color:0xc6a469});
- addLandmark(scene,colliders,{name:'SNAPDRAGON STADIUM',x:235,z:-545,w:92,d:72,h:15,color:0x847d72});
- addLandmark(scene,colliders,{name:'HOTEL DEL CORONADO',x:-390,z:430,w:58,d:42,h:24,color:0xefe3cf});
- addLandmark(scene,colliders,{name:'UC SAN DIEGO',x:-70,z:-1250,w:62,d:48,h:30,color:0x7891a5});
+ addLandmark(scene,colliders,protectedRoads,{name:'PETCO PARK',x:105,z:155,w:72,d:58,h:18,color:0x607949});
+ addLandmark(scene,colliders,protectedRoads,{name:'CONVENTION CENTER',x:-20,z:115,w:95,d:22,h:16,color:0xaeb4b8});
+ addLandmark(scene,colliders,protectedRoads,{name:'BALBOA PARK',x:135,z:-175,w:22,d:22,h:48,color:0xc6a469});
+ addLandmark(scene,colliders,protectedRoads,{name:'SNAPDRAGON STADIUM',x:235,z:-545,w:92,d:72,h:15,color:0x847d72});
+ addLandmark(scene,colliders,protectedRoads,{name:'HOTEL DEL CORONADO',x:-390,z:430,w:58,d:42,h:24,color:0xefe3cf});
+ addLandmark(scene,colliders,protectedRoads,{name:'UC SAN DIEGO',x:-70,z:-1250,w:62,d:48,h:30,color:0x7891a5});
  const runway=new THREE.Mesh(new THREE.PlaneGeometry(42,360),freewayMat);runway.rotation.x=-Math.PI/2;runway.rotation.z=-1.33;runway.position.set(-245,.07,-250);scene.add(runway);const airportLabel=labelSprite('SAN DIEGO INTERNATIONAL AIRPORT','#62a5ff',17);airportLabel.position.set(-245,22,-250);scene.add(airportLabel);
  for(const district of SAN_DIEGO_DISTRICTS){const label=labelSprite(district.name,'#e7b84f',district.name.length>20?14:17);label.position.set(district.x,34,district.z);scene.add(label)}
  return {colliders};
