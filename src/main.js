@@ -44,6 +44,7 @@ worldCanvas.addEventListener('pointerup',()=>cameraDrag=null);worldCanvas.addEve
 function districtFor(x,z){return districtAt(x,z,state.district)}
 function positionIsClear(x,z,radius){return !buildingColliders.some(b=>x+radius>b.minX&&x-radius<b.maxX&&z+radius>b.minZ&&z-radius<b.maxZ)}
 function moveWithCollisions(direction,distance){
+ distance*=state.mode==='drive'?2.2:1;
  const radius=state.mode==='drive'?1.25:.65,nextX=THREE.MathUtils.clamp(player.position.x+direction.x*distance,SAN_DIEGO_BOUNDS.minX,SAN_DIEGO_BOUNDS.maxX),nextZ=THREE.MathUtils.clamp(player.position.z+direction.z*distance,SAN_DIEGO_BOUNDS.minZ,SAN_DIEGO_BOUNDS.maxZ);
  // Resolve each axis separately so the player slides along a wall instead of sticking to it.
  if(positionIsClear(nextX,player.position.z,radius))player.position.x=nextX;
