@@ -12,7 +12,7 @@ export const SAN_DIEGO_DISTRICTS=[
  {name:'Old Town',x:-95,z:-410,radius:165,density:10,height:[6,16]},
  {name:'Mission Valley',x:170,z:-520,radius:220,density:18,height:[8,30]},
  {name:'Mission Bay',x:-285,z:-650,radius:220,density:8,height:[6,18]},
- {name:'La Jolla',x:-310,z:-1070,radius:230,density:15,height:[8,28]},
+ {name:'La Jolla',x:-245,z:-1070,radius:230,density:15,height:[8,28]},
  {name:'University City',x:-75,z:-1235,radius:210,density:18,height:[12,40]},
  {name:'Del Mar',x:-160,z:-1540,radius:190,density:10,height:[7,22]},
  {name:'National City',x:120,z:430,radius:190,density:14,height:[7,25]},
@@ -54,6 +54,7 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  for(const freeway of SAN_DIEGO_FREEWAYS){for(let i=1;i<freeway.points.length;i++){const a=freeway.points[i-1],b=freeway.points[i];roadSegment(scene,freewayMat,a,b,freeway.width);roadSegment(scene,lineMat,a,b,.7,.055)}const middle=freeway.points[Math.floor(freeway.points.length/2)],sign=labelSprite(freeway.name,'#62a5ff',11);sign.position.set(middle[0],13,middle[1]);scene.add(sign)}
  const roadCorridors=[];
  function registerRoad(a,b,width,material=roadMat,sidewalks=true){roadCorridors.push({a,b,width});if(sidewalks)addStreet(scene,material,sidewalkMat,a,b,width);else roadSegment(scene,material,a,b,width,.06)}
+ function registerLandRoad(a,b,width,material=roadMat,sidewalks=true){const length=Math.hypot(b[0]-a[0],b[1]-a[1]),steps=Math.max(2,Math.ceil(length/16));let start=null,previous=null;for(let i=0;i<=steps;i++){const t=i/steps,point=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],inWater=SAN_DIEGO_WATER_AREAS.some(area=>waterContains(area,point[0],point[1],width/2));if(!inWater){if(!start)start=point;previous=point}else if(start&&previous){if(Math.hypot(previous[0]-start[0],previous[1]-start[1])>5)registerRoad(start,previous,width,material,sidewalks);start=previous=null}}if(start&&previous&&Math.hypot(previous[0]-start[0],previous[1]-start[1])>5)registerRoad(start,previous,width,material,sidewalks)}
  for(const freeway of SAN_DIEGO_FREEWAYS){for(let i=1;i<freeway.points.length;i++)roadCorridors.push({a:freeway.points[i-1],b:freeway.points[i],width:freeway.width})}
  registerRoad([-390,120],[-65,145],12);
  const surfaceRoads=[[[-430,-260],[930,-110]],[[-300,-650],[600,-650]],[[-300,-1070],[300,-1070]],[[-150,790],[500,790]],[[-120,0],[340,0]],[[0,-190],[0,320]],[[190,430],[190,980]]];
@@ -62,10 +63,10 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  // plus two narrow service alleys behind the building rows.
  for(const district of SAN_DIEGO_DISTRICTS){
    const span=Math.max(80,district.radius*.72),alleyOffset=Math.max(32,district.radius*.28);
-   registerRoad([district.x-span,district.z],[district.x+span,district.z],10);
-   registerRoad([district.x,district.z-span],[district.x,district.z+span],10);
-   registerRoad([district.x-span,district.z-alleyOffset],[district.x+span,district.z-alleyOffset],5,alleyMat,false);
-   registerRoad([district.x+alleyOffset,district.z-span],[district.x+alleyOffset,district.z+span],5,alleyMat,false);
+   registerLandRoad([district.x-span,district.z],[district.x+span,district.z],10);
+   registerLandRoad([district.x,district.z-span],[district.x,district.z+span],10);
+   registerLandRoad([district.x-span,district.z-alleyOffset],[district.x+span,district.z-alleyOffset],5,alleyMat,false);
+   registerLandRoad([district.x+alleyOffset,district.z-span],[district.x+alleyOffset,district.z+span],5,alleyMat,false);
  }
  const colors=[0x65584a,0x344c5e,0x705348,0x505b63,0x8a806c],materials=colors.map(color=>new THREE.MeshStandardMaterial({color,roughness:.74})),unitBox=new THREE.BoxGeometry(1,1,1);
  for(const district of SAN_DIEGO_DISTRICTS){
