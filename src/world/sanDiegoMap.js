@@ -29,6 +29,14 @@ export const SAN_DIEGO_FREEWAYS=[
  {name:'SR-94',width:20,points:[[-55,145],[180,135],[430,120],[690,100],[940,80]]},
  {name:'I-15',width:21,points:[[480,980],[465,620],[470,260],[485,-120],[470,-520],[430,-920]]}
 ];
+export const SAN_DIEGO_WATER_AREAS=[
+ {name:'Pacific Ocean',points:[[-650,-1720],[-175,-1720],[-165,-1540],[-235,-1320],[-310,-1080],[-300,-860],[-365,-690],[-465,-545],[-525,-310],[-505,-80],[-485,250],[-445,620],[-390,980],[-345,1420],[-650,1420]]},
+ {name:'Mission Bay',points:[[-455,-820],[-350,-865],[-235,-835],[-175,-745],[-185,-590],[-255,-515],[-365,-525],[-445,-610]],bridges:[{a:[-470,-650],b:[-130,-650],width:16}]},
+ {name:'San Diego Bay',points:[[-485,-210],[-355,-245],[-230,-205],[-145,-115],[-115,65],[-145,255],[-225,455],[-330,620],[-435,590],[-470,390],[-470,120]],holes:[[[-425,-70],[-335,-90],[-305,70],[-320,300],[-350,515],[-420,500],[-445,280],[-440,70]]],bridges:[{a:[-410,118],b:[-60,146],width:18}]}
+];
+function pointInPolygon(x,z,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const [xi,zi]=points[i],[xj,zj]=points[j],cross=(zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi;if(cross)inside=!inside}return inside}
+function waterContains(area,x,z,radius=0){const samples=radius?[[x,z],[x+radius,z],[x-radius,z],[x,z+radius],[x,z-radius]]:[[x,z]];return samples.some(([sx,sz])=>pointInPolygon(sx,sz,area.points)&&!(area.holes||[]).some(hole=>pointInPolygon(sx,sz,hole))&&!(area.bridges||[]).some(bridge=>distanceToSegment(sx,sz,bridge.a,bridge.b)<=bridge.width/2))}
+function addWaterArea(scene,material,area){const shape=new THREE.Shape();area.points.forEach(([x,z],i)=>i?shape.lineTo(x,-z):shape.moveTo(x,-z));shape.closePath();for(const holePoints of area.holes||[]){const hole=new THREE.Path();holePoints.forEach(([x,z],i)=>i?hole.lineTo(x,-z):hole.moveTo(x,-z));hole.closePath();shape.holes.push(hole)}const mesh=new THREE.Mesh(new THREE.ShapeGeometry(shape),material);mesh.rotation.x=-Math.PI/2;mesh.position.y=.035;mesh.receiveShadow=true;scene.add(mesh)}
 function roadSegment(scene,material,a,b,width,y=.04){const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz),mesh=new THREE.Mesh(new THREE.PlaneGeometry(width,length),material);mesh.rotation.x=-Math.PI/2;mesh.rotation.z=-Math.atan2(dz,dx)+Math.PI/2;mesh.position.set((a[0]+b[0])/2,y,(a[1]+b[1])/2);scene.add(mesh)}
 function seeded(seed){let value=seed>>>0;return()=>{value=(value*1664525+1013904223)>>>0;return value/4294967296}}
 function distanceToSegment(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],lengthSq=dx*dx+dz*dz;if(!lengthSq)return Math.hypot(x-a[0],z-a[1]);const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/lengthSq));return Math.hypot(x-(a[0]+t*dx),z-(a[1]+t*dz))}
@@ -41,8 +49,8 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  const colliders=[],rng=seeded(917),landMat=new THREE.MeshStandardMaterial({color:0x52694a,roughness:1}),waterMat=new THREE.MeshStandardMaterial({color:0x17658b,roughness:.38}),roadMat=new THREE.MeshStandardMaterial({color:0x282b30,roughness:.9}),freewayMat=new THREE.MeshStandardMaterial({color:0x343940,roughness:.82}),sidewalkMat=new THREE.MeshStandardMaterial({color:0x99978f,roughness:1}),alleyMat=new THREE.MeshStandardMaterial({color:0x3c3d3e,roughness:1}),lineMat=new THREE.MeshBasicMaterial({color:0xd5a840});
  const land=new THREE.Mesh(new THREE.PlaneGeometry(1800,3200),landMat);land.rotation.x=-Math.PI/2;land.position.set(250,0,-150);scene.add(land);
  const ocean=new THREE.Mesh(new THREE.PlaneGeometry(900,3400),waterMat);ocean.rotation.x=-Math.PI/2;ocean.position.set(-980,-.02,-150);scene.add(ocean);
- const bay=new THREE.Mesh(new THREE.PlaneGeometry(285,690),waterMat);bay.rotation.x=-Math.PI/2;bay.position.set(-300,.02,120);scene.add(bay);
- const coronado=new THREE.Mesh(new THREE.PlaneGeometry(125,610),landMat);coronado.rotation.x=-Math.PI/2;coronado.position.set(-390,.035,250);scene.add(coronado);
+ for(const area of SAN_DIEGO_WATER_AREAS){addWaterArea(scene,waterMat,area);colliders.push({type:'water',name:area.name,contains:(x,z,radius=0)=>waterContains(area,x,z,radius)})}
+ const coronadoShape=new THREE.Shape();[[-425,-70],[-335,-90],[-305,70],[-320,300],[-350,515],[-420,500],[-445,280],[-440,70]].forEach(([x,z],i)=>i?coronadoShape.lineTo(x,-z):coronadoShape.moveTo(x,-z));coronadoShape.closePath();const coronado=new THREE.Mesh(new THREE.ShapeGeometry(coronadoShape),landMat);coronado.rotation.x=-Math.PI/2;coronado.position.y=.045;scene.add(coronado);
  for(const freeway of SAN_DIEGO_FREEWAYS){for(let i=1;i<freeway.points.length;i++){const a=freeway.points[i-1],b=freeway.points[i];roadSegment(scene,freewayMat,a,b,freeway.width);roadSegment(scene,lineMat,a,b,.7,.055)}const middle=freeway.points[Math.floor(freeway.points.length/2)],sign=labelSprite(freeway.name,'#62a5ff',11);sign.position.set(middle[0],13,middle[1]);scene.add(sign)}
  const roadCorridors=[];
  function registerRoad(a,b,width,material=roadMat,sidewalks=true){roadCorridors.push({a,b,width});if(sidewalks)addStreet(scene,material,sidewalkMat,a,b,width);else roadSegment(scene,material,a,b,width,.06)}
@@ -69,7 +77,7 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
      const x=district.x+Math.cos(angle)*distance,z=district.z+Math.sin(angle)*distance;
      const width=10+rng()*15,depth=10+rng()*15,radius=Math.hypot(width,depth)/2;
      if(!clearsRoads(x,z,radius,roadCorridors,4))continue;
-     if(colliders.some(c=>x+width/2+3>c.minX&&x-width/2-3<c.maxX&&z+depth/2+3>c.minZ&&z-depth/2-3<c.maxZ))continue;
+     if(colliders.some(c=>c.contains?.(x,z,radius)))continue;if(colliders.some(c=>c.minX!==undefined&&x+width/2+3>c.minX&&x-width/2-3<c.maxX&&z+depth/2+3>c.minZ&&z-depth/2-3<c.maxZ))continue;
      const height=district.height[0]+rng()*(district.height[1]-district.height[0]),building=new THREE.Mesh(unitBox,materials[Math.floor(rng()*materials.length)]);
      building.scale.set(width,height,depth);building.position.set(x,height/2,z);building.castShadow=!mobileDevice;scene.add(building);
      colliders.push({minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2});placed++;
