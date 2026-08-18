@@ -10,20 +10,24 @@
         android:theme="@style/AppTheme">
 
         <activity
+            android:name=".FullScreenSplashActivity"
             android:screenOrientation="landscape"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
-            android:name=".MainActivity"
-            android:label="@string/title_activity_main"
-            android:theme="@style/AppTheme.NoActionBarLaunch"
-            android:launchMode="singleTask"
+            android:theme="@style/AppTheme.NoActionBar"
             android:exported="true">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:launchMode="singleTask"
+            android:exported="true" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -35,8 +39,6 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
-
-    <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
