@@ -19,7 +19,6 @@ public class FullScreenSplashActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        enterImmersiveMode();
 
         ImageView splashImage = new ImageView(this);
         splashImage.setBackgroundColor(Color.BLACK);
@@ -27,6 +26,7 @@ public class FullScreenSplashActivity extends Activity {
         splashImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
         splashImage.setAdjustViewBounds(false);
         setContentView(splashImage);
+        enterImmersiveMode();
 
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             startActivity(new Intent(this, MainActivity.class));
