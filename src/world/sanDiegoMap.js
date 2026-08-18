@@ -29,6 +29,30 @@ export const SAN_DIEGO_FREEWAYS=[
  {name:'SR-94',width:20,points:[[-55,145],[180,135],[430,120],[690,100],[940,80]]},
  {name:'I-15',width:21,points:[[480,980],[465,620],[470,260],[485,-120],[470,-520],[430,-920]]}
 ];
+export const SAN_DIEGO_SURFACE_ROADS=[
+ {name:'Harbor Drive',width:12,points:[[-390,120],[-65,145],[85,170]]},
+ {name:'El Cajon Boulevard',width:12,points:[[-430,-260],[120,-220],[560,-165],[930,-110]]},
+ {name:'Friars Road',width:12,points:[[-300,-650],[80,-630],[600,-650]]},
+ {name:'La Jolla Village Drive',width:12,points:[[-300,-1070],[30,-1080],[300,-1070]]},
+ {name:'H Street',width:12,points:[[-150,790],[190,790],[500,790]]},
+ {name:'Broadway',width:12,points:[[-120,0],[110,0],[340,0]]},
+ {name:'5th Avenue',width:12,points:[[0,-190],[0,80],[0,320]]},
+ {name:'Highland Avenue',width:12,points:[[190,430],[190,700],[190,980]]},
+ {name:'University Avenue',width:11,points:[[70,-315],[250,-300],[620,-265]]},
+ {name:'Mission Boulevard',width:10,points:[[-360,-505],[-355,-720],[-330,-960],[-305,-1160]]},
+ {name:'Garnet Avenue',width:10,points:[[-350,-790],[-160,-790],[35,-780]]},
+];
+const DOWNTOWN_STREETS=[
+ ...[-105,-70,-35,35,70,105].map(x=>({width:8,points:[[x,-155],[x,230]]})),
+ ...[-120,-80,-40,40,80,120,160,200].map(z=>({width:8,points:[[-145,z],[165,z]]})),
+];
+const NEIGHBORHOOD_STREETS=[
+ ...[-365,-325,-285].map(x=>({width:7,points:[[x,-1210],[x,-620]]})),
+ ...[-1120,-1010,-900,-690].map(z=>({width:7,points:[[-430,z],[30,z]]})),
+ ...[130,250,370].map(x=>({width:7,points:[[x,610],[x,970]]})),
+ ...[675,875].map(z=>({width:7,points:[[70,z],[490,z]]})),
+ ...[790,875,960].map(x=>({width:7,points:[[x,-310],[x,80]]})),
+];
 function roadSegment(scene,material,a,b,width,y=.04){const dx=b[0]-a[0],dz=b[1]-a[1],length=Math.hypot(dx,dz),mesh=new THREE.Mesh(new THREE.PlaneGeometry(width,length),material);mesh.rotation.x=-Math.PI/2;mesh.rotation.z=-Math.atan2(dz,dx)+Math.PI/2;mesh.position.set((a[0]+b[0])/2,y,(a[1]+b[1])/2);scene.add(mesh)}
 function distanceToSegment(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],lengthSq=dx*dx+dz*dz,t=lengthSq?Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/lengthSq)):0;return Math.hypot(x-(a[0]+t*dx),z-(a[1]+t*dz))}
 function roadClearance(x,z,radius,roads){return roads.every(road=>{for(let i=1;i<road.points.length;i++)if(distanceToSegment(x,z,road.points[i-1],road.points[i])<road.width/2+radius)return false;return true})}
@@ -47,14 +71,19 @@ function nearestClearLandmarkPosition(x,z,w,d,roads){
  return {x,z};
 }
 function addLandmark(scene,colliders,roads,{name,x,z,w,d,h,color=0x9a895f,labelHeight=h+12}){const position=nearestClearLandmarkPosition(x,z,w,d,roads),material=new THREE.MeshStandardMaterial({color,roughness:.65}),building=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);building.position.set(position.x,h/2,position.z);scene.add(building);colliders.push({minX:position.x-w/2,maxX:position.x+w/2,minZ:position.z-d/2,maxZ:position.z+d/2});const label=labelSprite(name);label.position.set(position.x,labelHeight,position.z);scene.add(label)}
+function addPalm(scene,x,z,scale=1){const trunkMat=new THREE.MeshStandardMaterial({color:0x7b5735,roughness:1}),leafMat=new THREE.MeshStandardMaterial({color:0x245a35,roughness:.9}),group=new THREE.Group(),trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.34,5.8,7),trunkMat);trunk.position.y=2.9;group.add(trunk);for(let i=0;i<7;i++){const leaf=new THREE.Mesh(new THREE.ConeGeometry(.28,3.8,5),leafMat);leaf.position.y=5.9;leaf.rotation.z=Math.PI/2.35;leaf.rotation.y=i/7*Math.PI*2;leaf.translateY(1.2);group.add(leaf)}group.position.set(x,0,z);group.scale.setScalar(scale);scene.add(group)}
+function addBeach(scene,x,z,w,d){const sand=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshStandardMaterial({color:0xcdbb86,roughness:1}));sand.rotation.x=-Math.PI/2;sand.position.set(x,.025,z);scene.add(sand)}
+function addMarina(scene,x,z,rows=4){const dockMat=new THREE.MeshStandardMaterial({color:0x8a765a,roughness:.85}),hullMat=new THREE.MeshStandardMaterial({color:0xe8e7df,roughness:.5});for(let row=0;row<rows;row++){const dock=new THREE.Mesh(new THREE.BoxGeometry(5,.18,72),dockMat);dock.position.set(x+row*15,.13,z);scene.add(dock);for(let boat=0;boat<6;boat++){const hull=new THREE.Mesh(new THREE.ConeGeometry(1.6,6,4),hullMat);hull.rotation.x=Math.PI/2;hull.position.set(x+row*15+4.5,.55,z-27+boat*11);scene.add(hull)}}}
 export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  const colliders=[],rng=seeded(917),landMat=new THREE.MeshStandardMaterial({color:0x52694a,roughness:1}),waterMat=new THREE.MeshStandardMaterial({color:0x17658b,roughness:.38}),roadMat=new THREE.MeshStandardMaterial({color:0x282b30,roughness:.9}),freewayMat=new THREE.MeshStandardMaterial({color:0x343940,roughness:.82}),lineMat=new THREE.MeshBasicMaterial({color:0xd5a840}),laneMat=new THREE.MeshBasicMaterial({color:0xe8e5d8}),sidewalkMat=new THREE.MeshStandardMaterial({color:0xa8a49a,roughness:1});
  const land=new THREE.Mesh(new THREE.PlaneGeometry(1800,3200),landMat);land.rotation.x=-Math.PI/2;land.position.set(250,0,-150);scene.add(land);
  const ocean=new THREE.Mesh(new THREE.PlaneGeometry(900,3400),waterMat);ocean.rotation.x=-Math.PI/2;ocean.position.set(-980,-.02,-150);scene.add(ocean);
  const bay=new THREE.Mesh(new THREE.PlaneGeometry(285,690),waterMat);bay.rotation.x=-Math.PI/2;bay.position.set(-300,.02,120);scene.add(bay);
  const coronado=new THREE.Mesh(new THREE.PlaneGeometry(125,610),landMat);coronado.rotation.x=-Math.PI/2;coronado.position.set(-390,.035,250);scene.add(coronado);
+ addBeach(scene,-502,-820,52,1320);addBeach(scene,-443,350,22,390);
+ addMarina(scene,-345,95,mobileDevice?2:4);
  for(const freeway of SAN_DIEGO_FREEWAYS){for(let i=1;i<freeway.points.length;i++){const a=freeway.points[i-1],b=freeway.points[i];roadSegment(scene,freewayMat,a,b,freeway.width);roadSegment(scene,lineMat,a,b,.7,.055)}const middle=freeway.points[Math.floor(freeway.points.length/2)],sign=labelSprite(freeway.name,'#62a5ff',11);sign.position.set(middle[0],13,middle[1]);scene.add(sign)}
- const surfaceRoads=[{width:12,points:[[-390,120],[-65,145]]},{width:12,points:[[-430,-260],[930,-110]]},{width:12,points:[[-300,-650],[600,-650]]},{width:12,points:[[-300,-1070],[300,-1070]]},{width:12,points:[[-150,790],[500,790]]},{width:12,points:[[-120,0],[340,0]]},{width:12,points:[[0,-190],[0,320]]},{width:12,points:[[190,430],[190,980]]}];
+ const surfaceRoads=[...SAN_DIEGO_SURFACE_ROADS,...DOWNTOWN_STREETS,...NEIGHBORHOOD_STREETS];
  // Surface streets get sidewalks, curbs and a center stripe so each corridor reads as a usable city street.
  for(const road of surfaceRoads)for(let i=1;i<road.points.length;i++){const a=road.points[i-1],b=road.points[i];for(const side of [-1,1]){const [sa,sb]=parallelSegment(a,b,side*(road.width/2+2.4));roadSegment(scene,sidewalkMat,sa,sb,3.8,.045)}roadSegment(scene,roadMat,a,b,road.width,.07);roadSegment(scene,laneMat,a,b,.24,.081)}
  const protectedRoads=[...SAN_DIEGO_FREEWAYS,...surfaceRoads];
@@ -67,6 +96,10 @@ export function buildSanDiegoMap(scene,{mobileDevice=false}={}){
  addLandmark(scene,colliders,protectedRoads,{name:'SNAPDRAGON STADIUM',x:235,z:-545,w:92,d:72,h:15,color:0x847d72});
  addLandmark(scene,colliders,protectedRoads,{name:'HOTEL DEL CORONADO',x:-390,z:430,w:58,d:42,h:24,color:0xefe3cf});
  addLandmark(scene,colliders,protectedRoads,{name:'UC SAN DIEGO',x:-70,z:-1250,w:62,d:48,h:30,color:0x7891a5});
+ addLandmark(scene,colliders,protectedRoads,{name:'USS MIDWAY',x:-205,z:80,w:25,d:105,h:12,color:0x727b7d});
+ addLandmark(scene,colliders,protectedRoads,{name:'SCRIPPS PIER',x:-462,z:-1210,w:10,d:95,h:3,color:0x9b8060});
+ addLandmark(scene,colliders,protectedRoads,{name:'CABRILLO MONUMENT',x:-500,z:-390,w:12,d:12,h:24,color:0xd8d0bd});
+ const palms=mobileDevice?18:42;for(let i=0;i<palms;i++){const coastZ=-1500+(i%21)*140,coastX=-475+(i%3)*10;addPalm(scene,coastX,coastZ,.8+(i%4)*.08)}
  const runway=new THREE.Mesh(new THREE.PlaneGeometry(42,360),freewayMat);runway.rotation.x=-Math.PI/2;runway.rotation.z=-1.33;runway.position.set(-245,.07,-250);scene.add(runway);const airportLabel=labelSprite('SAN DIEGO INTERNATIONAL AIRPORT','#62a5ff',17);airportLabel.position.set(-245,22,-250);scene.add(airportLabel);
  for(const district of SAN_DIEGO_DISTRICTS){const label=labelSprite(district.name,'#e7b84f',district.name.length>20?14:17);label.position.set(district.x,34,district.z);scene.add(label)}
  return {colliders};
