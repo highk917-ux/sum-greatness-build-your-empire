@@ -13,7 +13,7 @@ import android.view.WindowInsetsController;
 import android.widget.ImageView;
 
 public class FullScreenSplashActivity extends Activity {
-    private static final long SPLASH_DURATION_MS = 3500L;
+    private static final long SPLASH_DURATION_MS = 250L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,7 +23,7 @@ public class FullScreenSplashActivity extends Activity {
         ImageView splashImage = new ImageView(this);
         splashImage.setBackgroundColor(Color.BLACK);
         splashImage.setImageResource(R.drawable.splash);
-        splashImage.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        splashImage.setScaleType(ImageView.ScaleType.FIT_XY);
         splashImage.setAdjustViewBounds(false);
         setContentView(splashImage);
         enterImmersiveMode();
