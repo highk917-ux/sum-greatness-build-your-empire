@@ -26,8 +26,8 @@ public class MainActivity extends BridgeActivity {
         ViewGroup content = findViewById(android.R.id.content);
         ImageView brandScreen = new ImageView(this);
         brandScreen.setBackgroundColor(Color.BLACK);
-        brandScreen.setImageResource(R.drawable.splash);
-        brandScreen.setScaleType(ImageView.ScaleType.FIT_XY);
+        brandScreen.setImageResource(R.mipmap.ic_launcher);
+        brandScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
         brandScreen.setAdjustViewBounds(false);
         brandScreen.setClickable(true);
         brandScreen.setFocusable(true);
