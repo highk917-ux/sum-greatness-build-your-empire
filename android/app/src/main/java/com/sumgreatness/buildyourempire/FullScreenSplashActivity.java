@@ -22,7 +22,7 @@ public class FullScreenSplashActivity extends Activity {
 
         ImageView splashImage = new ImageView(this);
         splashImage.setBackgroundColor(Color.BLACK);
-        splashImage.setImageResource(R.mipmap.ic_launcher);
+        splashImage.setImageResource(R.drawable.brand_screen);
         splashImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
         splashImage.setAdjustViewBounds(false);
         setContentView(splashImage);
