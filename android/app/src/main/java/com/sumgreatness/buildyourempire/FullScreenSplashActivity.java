@@ -13,7 +13,7 @@ import android.view.WindowInsetsController;
 import android.widget.ImageView;
 
 public class FullScreenSplashActivity extends Activity {
-    private static final long SPLASH_DURATION_MS = 1800L;
+    private static final long SPLASH_DURATION_MS = 3500L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
