@@ -13,7 +13,7 @@ import android.widget.ImageView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
-    private static final long BRAND_SCREEN_DURATION_MS = 3500L;
+    private static final long BRAND_SCREEN_DURATION_MS = 5000L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,7 +27,7 @@ public class MainActivity extends BridgeActivity {
         ImageView brandScreen = new ImageView(this);
         brandScreen.setBackgroundColor(Color.BLACK);
         brandScreen.setImageResource(R.drawable.brand_screen);
-        brandScreen.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        brandScreen.setScaleType(ImageView.ScaleType.FIT_XY);
         brandScreen.setAdjustViewBounds(false);
         brandScreen.setClickable(true);
         brandScreen.setFocusable(true);
