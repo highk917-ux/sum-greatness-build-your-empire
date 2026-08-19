@@ -22,8 +22,8 @@ public class FullScreenSplashActivity extends Activity {
 
         ImageView splashImage = new ImageView(this);
         splashImage.setBackgroundColor(Color.BLACK);
-        splashImage.setImageResource(R.drawable.splash);
-        splashImage.setScaleType(ImageView.ScaleType.FIT_XY);
+        splashImage.setImageResource(R.mipmap.ic_launcher);
+        splashImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
         splashImage.setAdjustViewBounds(false);
         setContentView(splashImage);
         enterImmersiveMode();
