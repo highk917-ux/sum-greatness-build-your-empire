@@ -1,16 +1,50 @@
 package com.sumgreatness.buildyourempire;
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final long BRAND_SCREEN_DURATION_MS = 3500L;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         enterImmersiveMode();
+        showBrandScreen();
+    }
+
+    private void showBrandScreen() {
+        ViewGroup content = findViewById(android.R.id.content);
+        ImageView brandScreen = new ImageView(this);
+        brandScreen.setBackgroundColor(Color.BLACK);
+        brandScreen.setImageResource(R.drawable.splash);
+        brandScreen.setScaleType(ImageView.ScaleType.FIT_XY);
+        brandScreen.setAdjustViewBounds(false);
+        brandScreen.setClickable(true);
+        brandScreen.setFocusable(true);
+
+        content.addView(
+            brandScreen,
+            new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        );
+        brandScreen.bringToFront();
+
+        new Handler(Looper.getMainLooper()).postDelayed(
+            () -> content.removeView(brandScreen),
+            BRAND_SCREEN_DURATION_MS
+        );
     }
 
     @Override
