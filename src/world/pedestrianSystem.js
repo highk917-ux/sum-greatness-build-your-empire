@@ -24,6 +24,10 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
   const desiredCount = mobileDevice ? 6 : 12;
   const forward = new THREE.Vector3();
   const clock = new THREE.Clock();
+  const recycleDistanceSq = 105 * 105;
+  const nearAvoidDistanceSq = 2.2 * 2.2;
+  const farDistanceSq = (mobileDevice ? 40 : 55) ** 2;
+  const farUpdateInterval = mobileDevice ? 0.12 : 0.08;
   let elapsed = 0;
 
   function findSpawn(pedestrian, minDistance = 20) {
@@ -37,6 +41,7 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
         pedestrian.userData.heading = Math.random() * Math.PI * 2;
         pedestrian.userData.turnIn = 1.5 + Math.random() * 4;
         pedestrian.userData.stuck = 0;
+        pedestrian.userData.updateAccumulator = 0;
         return;
       }
     }
@@ -54,6 +59,7 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
     pedestrian.userData.heading = 0;
     pedestrian.userData.turnIn = 0;
     pedestrian.userData.stuck = 0;
+    pedestrian.userData.updateAccumulator = 0;
     pedestrian.userData.profile = BUSINESS_CONTACTS[index % BUSINESS_CONTACTS.length];
     scene.add(pedestrian);
     pedestrians.push(pedestrian);
@@ -65,23 +71,30 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
     elapsed += dt;
 
     for (const pedestrian of pedestrians) {
-      const distanceToPlayer = pedestrian.position.distanceTo(player.position);
-      if (!pedestrian.visible || distanceToPlayer > 105) {
+      const distanceSq = pedestrian.position.distanceToSquared(player.position);
+      if (!pedestrian.visible || distanceSq > recycleDistanceSq) {
         pedestrian.visible = true;
         findSpawn(pedestrian, 35);
         continue;
       }
 
       const data = pedestrian.userData;
-      data.turnIn -= dt;
-      if (data.turnIn <= 0 || distanceToPlayer < 2.2) {
-        data.heading += (Math.random() - 0.5) * 1.65 + (distanceToPlayer < 2.2 ? Math.PI : 0);
+      data.updateAccumulator += dt;
+      const farFromPlayer = distanceSq > farDistanceSq;
+      if (farFromPlayer && data.updateAccumulator < farUpdateInterval) continue;
+      const stepDt = farFromPlayer ? Math.min(data.updateAccumulator, 0.2) : dt;
+      data.updateAccumulator = 0;
+
+      data.turnIn -= stepDt;
+      const avoidingPlayer = distanceSq < nearAvoidDistanceSq;
+      if (data.turnIn <= 0 || avoidingPlayer) {
+        data.heading += (Math.random() - 0.5) * 1.65 + (avoidingPlayer ? Math.PI : 0);
         data.turnIn = 1.8 + Math.random() * 4.5;
       }
 
       forward.set(Math.sin(data.heading), 0, Math.cos(data.heading));
-      const nextX = pedestrian.position.x + forward.x * data.walkSpeed * dt;
-      const nextZ = pedestrian.position.z + forward.z * data.walkSpeed * dt;
+      const nextX = pedestrian.position.x + forward.x * data.walkSpeed * stepDt;
+      const nextZ = pedestrian.position.z + forward.z * data.walkSpeed * stepDt;
       if (isLikelyLand(nextX, nextZ) && positionIsClear(nextX, nextZ, 0.68)) {
         pedestrian.position.x = nextX;
         pedestrian.position.z = nextZ;
@@ -105,13 +118,13 @@ export function createPedestrianSystem({ scene, player, makePerson, positionIsCl
 
   function getNearest(position, maxDistance = 6) {
     let nearest = null;
-    let nearestDistance = maxDistance;
+    let nearestDistanceSq = maxDistance * maxDistance;
     for (const pedestrian of pedestrians) {
       if (!pedestrian.visible) continue;
-      const distance = pedestrian.position.distanceTo(position);
-      if (distance < nearestDistance) {
+      const distanceSq = pedestrian.position.distanceToSquared(position);
+      if (distanceSq < nearestDistanceSq) {
         nearest = pedestrian;
-        nearestDistance = distance;
+        nearestDistanceSq = distanceSq;
       }
     }
     return nearest;
