@@ -7,6 +7,7 @@ const NIGHT_FOG = new THREE.Color(0x0c1b28);
 const DAY_FOG = new THREE.Color(0x9bb2bd);
 const WARM_SUN = new THREE.Color(0xff9b62);
 const DAY_SUN = new THREE.Color(0xffe1b0);
+const VISUAL_UPDATE_INTERVAL = 1 / 12;
 
 function formatTime(hour) {
   const totalMinutes = Math.floor(hour * 60) % 1440;
@@ -20,13 +21,23 @@ function formatTime(hour) {
 export function createDayNightSystem({ scene, sun, hemisphere, fog, timeElement, initialHour = 16.5, onTimeChange }) {
   let hour = Number.isFinite(initialHour) ? initialHour % 24 : 16.5;
   let displayedMinute = -1;
+  let visualElapsed = VISUAL_UPDATE_INTERVAL;
   const skyColor = new THREE.Color();
   const fogColor = new THREE.Color();
   const sunColor = new THREE.Color();
 
   function update(deltaSeconds) {
     // One full in-game day lasts about 40 real minutes.
-    hour = (hour + deltaSeconds * 0.01) % 24;
+    const safeDelta = Number.isFinite(deltaSeconds) ? Math.max(0, deltaSeconds) : 0;
+    hour = (hour + safeDelta * 0.01) % 24;
+    visualElapsed += safeDelta;
+    const minute = Math.floor(hour * 60);
+
+    // Sky colors and light uniforms change slowly, so 12 updates per second look
+    // continuous while avoiding redundant GPU state changes on every phone frame.
+    if (visualElapsed < VISUAL_UPDATE_INTERVAL && minute === displayedMinute) return;
+    visualElapsed = 0;
+
     const solarAngle = ((hour - 6) / 24) * Math.PI * 2;
     const solarHeight = Math.sin(solarAngle);
     const daylight = THREE.MathUtils.smoothstep(solarHeight, -0.16, 0.35);
@@ -43,7 +54,6 @@ export function createDayNightSystem({ scene, sun, hemisphere, fog, timeElement,
     sun.color.copy(sunColor);
     hemisphere.intensity = 0.52 + daylight * 2.18;
 
-    const minute = Math.floor(hour * 60);
     if (minute !== displayedMinute) {
       displayedMinute = minute;
       if (timeElement) timeElement.textContent = formatTime(hour);
