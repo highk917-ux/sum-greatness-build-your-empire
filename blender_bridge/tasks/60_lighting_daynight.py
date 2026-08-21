@@ -16,11 +16,15 @@ for obj in list(bpy.data.objects):
 
 world=scene.world or bpy.data.worlds.new('SUM_GREATNESS_WORLD')
 scene.world=world
-world.use_nodes=True
-bg=world.node_tree.nodes.get('Background')
+# Blender 5.x deprecates World.use_nodes. Accessing node_tree initializes/uses
+# the world shader graph without touching the deprecated property.
+node_tree=world.node_tree
+bg=node_tree.nodes.get('Background') if node_tree else None
 if bg:
     bg.inputs['Color'].default_value=(0.035,0.055,0.095,1)
     bg.inputs['Strength'].default_value=0.35
+else:
+    world.color=(0.035,0.055,0.095)
 
 # Main sun
 ldata=bpy.data.lights.new('SG_GEN_LIGHT_SUN_DATA','SUN')
