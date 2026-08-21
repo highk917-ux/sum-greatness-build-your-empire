@@ -1,9 +1,9 @@
 """SUM GREATNESS unattended production development batch.
 
 Runs protected character preparation plus visible San Diego-inspired world,
-lighting, gameplay/export preparation, validation and save. Existing Human.rig
-and SUM_ character assets are preserved; exact face/body likeness remains
-reference-guided and is not guessed procedurally.
+lighting, gameplay/export preparation, detail, validation and save. Existing
+Human.rig and SUM_ character assets are preserved; exact face/body likeness
+remains reference-guided and is not guessed procedurally.
 """
 from pathlib import Path
 import runpy
@@ -19,6 +19,7 @@ STAGES=[
     '50_world_geometry.py',
     '60_lighting_daynight.py',
     '70_gameplay_export_prep.py',
+    '90_san_diego_detail_pass.py',
     '80_validate_and_save.py',
 ]
 
