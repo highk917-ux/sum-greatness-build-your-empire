@@ -43,9 +43,16 @@ Write-RunnerLog "Repo=$Repo Branch=$Branch Blend=$BlendFile Poll=${PollSeconds}s
 while ($true) {
     try {
         Set-Location $Repo
+        $dirty = git status --porcelain
+        if ($dirty) {
+            Write-RunnerLog 'Local Git changes detected; skipping automatic pull to protect work.'
+            Start-Sleep -Seconds $PollSeconds
+            continue
+        }
+
         git fetch origin $Branch | Out-Null
         git checkout $Branch | Out-Null
-        git reset --hard "origin/$Branch" | Out-Null
+        git pull --ff-only origin $Branch | Out-Null
         $commit = (git rev-parse HEAD).Trim()
         $last = if (Test-Path $stateFile) { (Get-Content $stateFile -Raw).Trim() } else { '' }
 
