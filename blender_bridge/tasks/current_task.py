@@ -19,6 +19,7 @@ STAGES=[
     '50_world_geometry.py',
     '60_lighting_daynight.py',
     '70_gameplay_export_prep.py',
+    '75_interaction_spawn_infrastructure.py',
     '90_san_diego_detail_pass.py',
     '80_validate_and_save.py',
 ]
@@ -39,5 +40,5 @@ for stage in STAGES:
     runpy.run_path(str(path),run_name='__main__')
 
 scene['sg_batch_status']='complete'
-scene['sg_batch_next']='reference-matched hero likeness; detailed landmark/coastline art; interiors; vehicles/NPCs; animation clips; chunked GLB export; mobile integration/testing'
+scene['sg_batch_next']='reference-matched hero likeness; final landmark/coastline art; modeled interiors; vehicle/NPC art and animation; 75+ mission content; chunked GLB export; mobile integration/testing'
 print('[SUM GREATNESS] Unattended production batch complete')
