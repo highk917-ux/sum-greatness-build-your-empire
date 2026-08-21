@@ -1,33 +1,25 @@
-"""SUM GREATNESS preparation batch.
+"""SUM GREATNESS unattended automation verification.
 
-Runs non-destructive preparation stages. Existing character geometry,
-clothing, shoes, accessories and rig are preserved.
+Safe end-to-end test for GitHub -> Windows runner -> Blender.
+It does not delete, move, reshape, or replace any character/game assets.
+It writes verification markers to the scene and saves the current .blend file.
 """
-from pathlib import Path
-import runpy
 import bpy
+from datetime import datetime, timezone
 
-BASE=Path(__file__).resolve().parent
-STAGES=[
-    '00_backup_and_audit.py',
-    '10_character_prepare.py',
-    '20_san_diego_layout.py',
-    '30_export_readiness.py',
-    '40_character_fidelity_prepare.py',
-]
+scene = bpy.context.scene
+stamp = datetime.now(timezone.utc).isoformat()
 
-scene=bpy.context.scene
-scene['sum_greatness_github_bridge']='connected'
-scene['sg_visual_target']='approved photo concept / realistic 3D'
-scene['sg_character_rule']='preserve Human.rig and SUM_ assets; low clean haircut; approved outfit, jewelry and branding'
-scene['sg_world_rule']='San Diego County inspired open world: roads, freeways, sidewalks, alleys, ocean, bay, landmarks and interiors'
+scene["sum_greatness_github_bridge"] = "connected"
+scene["sg_unattended_test"] = "passed"
+scene["sg_unattended_test_utc"] = stamp
+scene["sg_unattended_test_note"] = "GitHub -> Windows runner -> Blender background execution verified"
 
-print('[SUM GREATNESS] Starting preparation batch')
-for stage in STAGES:
-    path=BASE/stage
-    print(f'[SUM GREATNESS] Running {stage}')
-    runpy.run_path(str(path),run_name='__main__')
+print(f"[SUM GREATNESS] Unattended verification marker written at {stamp}")
+print(f"[SUM GREATNESS] Blend file: {bpy.data.filepath}")
 
-scene['sg_batch_status']='complete'
-scene['sg_batch_next']='reference-guided face/body/hair pass; clothing/accessory fit; animation validation; detailed city geometry; GLB export'
-print('[SUM GREATNESS] Preparation batch complete')
+if not bpy.data.filepath:
+    raise RuntimeError("No .blend filepath is open; refusing to save unattended test.")
+
+bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath)
+print("[SUM GREATNESS] Unattended verification PASSED and .blend saved.")
