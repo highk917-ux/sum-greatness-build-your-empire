@@ -1,25 +1,42 @@
-"""SUM GREATNESS unattended automation verification.
+"""SUM GREATNESS unattended production development batch.
 
-Safe end-to-end test for GitHub -> Windows runner -> Blender.
-It does not delete, move, reshape, or replace any character/game assets.
-It writes verification markers to the scene and saves the current .blend file.
+Runs protected character preparation plus visible San Diego-inspired world,
+lighting, gameplay/export preparation, validation and save. Existing Human.rig
+and SUM_ character assets are preserved; exact face/body likeness remains
+reference-guided and is not guessed procedurally.
 """
+from pathlib import Path
+import runpy
 import bpy
-from datetime import datetime, timezone
 
-scene = bpy.context.scene
-stamp = datetime.now(timezone.utc).isoformat()
+BASE=Path(__file__).resolve().parent
+STAGES=[
+    '00_backup_and_audit.py',
+    '10_character_prepare.py',
+    '20_san_diego_layout.py',
+    '30_export_readiness.py',
+    '40_character_fidelity_prepare.py',
+    '50_world_geometry.py',
+    '60_lighting_daynight.py',
+    '70_gameplay_export_prep.py',
+    '80_validate_and_save.py',
+]
 
-scene["sum_greatness_github_bridge"] = "connected"
-scene["sg_unattended_test"] = "passed"
-scene["sg_unattended_test_utc"] = stamp
-scene["sg_unattended_test_note"] = "GitHub -> Windows runner -> Blender background execution verified"
+scene=bpy.context.scene
+scene['sum_greatness_github_bridge']='connected'
+scene['sg_visual_target']='approved photo concept / realistic 3D'
+scene['sg_character_rule']='preserve Human.rig and SUM_ assets; low clean haircut; approved outfit, jewelry and branding; do not guess face likeness'
+scene['sg_world_rule']='San Diego County inspired open world with city-scale roads/freeways, sidewalks, ocean/bay, districts, landmarks and enterable-building pipeline'
+scene['sg_batch_status']='running'
 
-print(f"[SUM GREATNESS] Unattended verification marker written at {stamp}")
-print(f"[SUM GREATNESS] Blend file: {bpy.data.filepath}")
+print('[SUM GREATNESS] Starting unattended production batch')
+for stage in STAGES:
+    path=BASE/stage
+    if not path.exists():
+        raise FileNotFoundError(f'Missing production stage: {path}')
+    print(f'[SUM GREATNESS] Running {stage}')
+    runpy.run_path(str(path),run_name='__main__')
 
-if not bpy.data.filepath:
-    raise RuntimeError("No .blend filepath is open; refusing to save unattended test.")
-
-bpy.ops.wm.save_as_mainfile(filepath=bpy.data.filepath)
-print("[SUM GREATNESS] Unattended verification PASSED and .blend saved.")
+scene['sg_batch_status']='complete'
+scene['sg_batch_next']='reference-matched hero likeness; detailed landmark/coastline art; interiors; vehicles/NPCs; animation clips; chunked GLB export; mobile integration/testing'
+print('[SUM GREATNESS] Unattended production batch complete')
