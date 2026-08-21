@@ -1,9 +1,10 @@
 """SUM GREATNESS unattended production development batch.
 
 Runs protected character preparation plus visible San Diego-inspired world,
-lighting, gameplay/export preparation, detail, validation and save. Existing
-Human.rig and SUM_ character assets are preserved; exact face/body likeness
-remains reference-guided and is not guessed procedurally.
+lighting, gameplay/export preparation, detail, mission infrastructure,
+validation and save. Existing Human.rig and SUM_ character assets are
+preserved; exact face/body likeness remains reference-guided and is not guessed
+procedurally.
 """
 from pathlib import Path
 import runpy
@@ -21,6 +22,7 @@ STAGES=[
     '70_gameplay_export_prep.py',
     '75_interaction_spawn_infrastructure.py',
     '90_san_diego_detail_pass.py',
+    '95_mission_network.py',
     '80_validate_and_save.py',
 ]
 
@@ -40,5 +42,5 @@ for stage in STAGES:
     runpy.run_path(str(path),run_name='__main__')
 
 scene['sg_batch_status']='complete'
-scene['sg_batch_next']='reference-matched hero likeness; final landmark/coastline art; modeled interiors; vehicle/NPC art and animation; 75+ mission content; chunked GLB export; mobile integration/testing'
+scene['sg_batch_next']='reference-matched hero likeness; final landmark/coastline art; modeled interiors; vehicle/NPC art and animation; mission dialogue/runtime; chunked GLB export; mobile integration/testing'
 print('[SUM GREATNESS] Unattended production batch complete')
