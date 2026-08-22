@@ -16,21 +16,46 @@ git status --short
 
 Open Blender, go to **Scripting**, open `blender_bridge/run_latest.py`, and click **Run Script**.
 
-Expected result: the current Blender automation pipeline completes without deleting or replacing approved character geometry and exports the founder GLB into the repository's public model path.
-
-Required file:
+Expected result: the current Blender automation pipeline completes without deleting or replacing approved character geometry and exports the preview files outside the Git checkout to:
 
 ```text
-public/assets/models/sum-greatness-founder.glb
+%USERPROFILE%\OneDrive\Documents\SUM_GREATNESS_exports\phone_preview
 ```
 
-If the file is missing, stop the Android test and inspect the Blender System Console/output first.
+Required source file:
+
+```text
+sum-greatness-founder.glb
+```
+
+Also open `phone_preview_manifest.json` in that same folder and confirm:
+
+- `founder_status` is `exported`
+- `founder_glb_bytes` is greater than 1024
+- `hero_bone_count` is greater than 0 for a rigged founder
+- `skinned_mesh_count` is greater than 0 for skeletal deformation
+- `animation_action_count` and `animation_action_names` contain the clips expected from Blender
+
+If the founder file is missing/empty or the manifest reports no rig/skinned mesh, stop the Android test and inspect the Blender System Console/output first.
 
 ## 3. Prepare the Android phone preview
 
-From the repository root, run the existing phone-preview preparation script used by this project. Confirm that its GLB verification passes for the public, Vite build, and Android packaged copies before opening Android Studio.
+From the repository root run:
 
-The same founder GLB must survive all three packaging stages. A missing or changed hash means the packaging stage that reported the mismatch is the blocker.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\blender_bridge\automation\prepare_phone_preview.ps1
+```
+
+This script copies the generated founder GLB into `public/assets/models`, runs the Vite production build, syncs Capacitor Android assets, and verifies the founder file byte-for-byte with SHA-256 at all three stages.
+
+Expected success messages:
+
+1. `Public founder GLB verified`
+2. `Vite dist founder GLB verified`
+3. `Android packaged founder GLB verified`
+4. `PHONE PREVIEW BUILD PREP COMPLETE`
+
+A missing or changed hash means the packaging stage that reported the mismatch is the blocker.
 
 ## 4. Character load test
 
@@ -41,6 +66,7 @@ Launch the installed Android build and verify:
 3. The model is facing the expected forward direction.
 4. There are no WebView/console errors reporting `Founder GLB unavailable`.
 5. The console reports founder geometry counts and the mapped/missing animation clip list.
+6. The successful status reports which model URL loaded. The loader now tries both Capacitor-friendly relative and origin-root asset URLs before accepting the fallback.
 
 ## 5. Skeletal movement test
 
@@ -52,11 +78,11 @@ Test in this order:
 4. Stop after walking and after running.
 5. Turn left and right while standing still.
 
-The controller now maps named clips for idle, walk, run, stop, turn-left, and turn-right. Missing clips should fall back safely for locomotion and should be clearly reported in diagnostics.
+The controller maps named clips for idle, walk, run, stop, turn-left, and turn-right. It also infers standing-turn intent directly from player yaw changes, so turn clips can work even before the main movement loop explicitly passes a turn value. Missing clips should fall back safely for locomotion and should be clearly reported in diagnostics.
 
 ## 6. Interaction foundation test
 
-The branch now includes `src/world/interactionDirector.js`, which connects the reusable interactable registry to the interaction state controller, door controllers, building portals, and NPC gesture controllers without hard-coding those systems into player movement.
+The branch includes `src/world/interactionDirector.js`, which connects the reusable interactable registry to the interaction state controller, door controllers, building portals, and NPC gesture controllers without hard-coding those systems into player movement.
 
 After real interaction targets are registered in the world, test in this order:
 
@@ -71,7 +97,7 @@ After real interaction targets are registered in the world, test in this order:
 9. Open the door, enter, then exit, and verify the player moves to the configured portal positions.
 10. Walk away from an interactable and verify focus clears instead of leaving a stale prompt/target.
 
-The interaction director also updates registered door controllers each frame, so door motion stays independent from the player controller.
+The interaction state now reports whether the requested real animation clip actually played through `lastAnimationPlayed`, which helps separate a logic success from a missing Blender animation clip.
 
 ## 7. NPC gesture test
 
@@ -99,6 +125,6 @@ Before moving on to storyline/gameplay work, confirm all of these still work tog
 
 ## Current hard blocker
 
-GitHub-side code can prepare and harden the loading/interaction systems, but it cannot create or run the local Blender export or install/run the Android build on the physical phone. The decisive morning test is therefore the local export of `sum-greatness-founder.glb`, followed by Android packaging and the phone run.
+GitHub-side code can prepare and harden the loading/interaction systems, but it cannot run the local Blender export or install/run the Android build on the physical phone. The decisive morning test is therefore the local export of `sum-greatness-founder.glb`, followed by verified Android packaging and the phone run.
 
-Do not start wiring storyline progression into the live game loop until the founder GLB, locomotion, pickup/place, door, portal, and NPC gesture regression checks above pass on the phone. The next gameplay/story layer should remain isolated until that foundation is confirmed stable.
+Do not wire storyline progression into the live game loop until the founder GLB, locomotion, pickup/place, door, portal, and NPC gesture regression checks above pass on the phone. The next gameplay/story layer should remain isolated until that foundation is confirmed stable.
