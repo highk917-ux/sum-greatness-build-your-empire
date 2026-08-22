@@ -52,7 +52,7 @@ powershell -ExecutionPolicy Bypass -File .\blender_bridge\automation\prepare_pho
 
 Do not continue until the script confirms the founder GLB at every packaging layer and the automated tests/build complete. The source, Vite `dist`, and Android asset copies should have matching SHA-256 hashes.
 
-The automated test run now also covers the standalone story progression and objective-tracking scaffolds. Those systems are intentionally not wired into the live gameplay loop until the founder/interaction foundation passes the physical-phone test.
+The automated test run now also covers the standalone story progression, objective tracking, gameplay-event bridge, and mission save-store scaffolds. Those systems are intentionally not wired into the live gameplay loop until the founder/interaction foundation passes the physical-phone test.
 
 ## 4. Launch Android Studio
 
@@ -79,14 +79,16 @@ Run the app on the phone in landscape.
 
 ## 6. Story-system readiness after the interaction test passes
 
-No extra morning action is required yet. The branch now contains a detached mission progression system plus objective tracking for the first four foundation missions:
+No extra morning action is required yet. The branch now contains a detached mission progression system, objective tracker, mission runtime, gameplay-event bridge, and safe local mission save store for the first four foundation missions:
 
 - Welcome to San Diego: movement, camera rotation, approach an interactable.
 - Make an Introduction: NPC greeting/gesture.
 - First Delivery: pickup and place a package.
 - Open for Business: open a door and enter a business.
 
-Once steps 1-14 above pass on the phone, the next safe code milestone is wiring gameplay events from the movement, interaction director, doors/portals, and NPC gesture controller into those objective events. Until then, keeping the story layer detached avoids masking character/interaction bugs with mission logic.
+The gameplay-event bridge already knows how to translate namespaced movement, camera, interaction, NPC, pickup/place, door, and portal events into mission objective events. It remains deliberately disconnected from the live loop. The save store can serialize and restore mission runtime state without failing the game if local storage is unavailable or corrupt.
+
+Once steps 1-14 above pass on the phone, the next safe code milestone is emitting the namespaced gameplay events from the live movement, interaction director, doors/portals, and NPC gesture controller and then connecting the bridge. Until then, keeping the story layer detached avoids masking character/interaction bugs with mission logic.
 
 ## 7. What to report if something fails
 
