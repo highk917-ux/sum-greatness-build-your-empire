@@ -36,9 +36,6 @@ def export_selected(path: Path):
         'use_selection': True,
         'export_animations': True,
     }
-    # Blender glTF operator options vary across versions. Only pass optional
-    # animation settings exposed by the installed version so unattended export
-    # does not fail because one Blender build renamed/removed a property.
     try:
         supported = set(bpy.ops.export_scene.gltf.get_rna_type().properties.keys())
     except Exception:
@@ -56,14 +53,11 @@ def export_selected(path: Path):
     return path.exists() and path.stat().st_size > 0
 
 
-# Character preview: Human.rig plus all existing SUM_ meshes/accessories.
 hero = bpy.data.objects.get('Human.rig') or bpy.data.objects.get('Human') or bpy.data.objects.get('human.rig')
 character_objects = []
 if hero is not None:
     character_objects.append(hero)
 character_objects.extend(obj for obj in bpy.data.objects if obj.name.startswith('SUM_'))
-# Include direct descendants of selected character assets (e.g. meshes parented
-# to the rig or to accessories) without changing approved geometry/materials.
 expanded = list(character_objects)
 for obj in list(character_objects):
     expanded.extend(list(obj.children_recursive))
@@ -75,6 +69,14 @@ skinned_mesh_count = sum(
     1 for obj in character_objects
     if obj.type == 'MESH' and any(mod.type == 'ARMATURE' for mod in obj.modifiers)
 )
+pose_action_names = sorted(
+    action.name for action in bpy.data.actions
+    if any(str(getattr(curve, 'data_path', '')).startswith('pose.bones[') for curve in getattr(action, 'fcurves', ()))
+)
+animation_ready_count = int(scene.get('sg_animation_ready_count', 0))
+animation_required_count = int(scene.get('sg_animation_required_count', 0))
+animation_missing = [item for item in str(scene.get('sg_animation_missing', '')).split(',') if item]
+animation_status = str(scene.get('sg_animation_status', 'not_audited'))
 
 founder_status = 'skipped_no_character'
 if character_objects:
@@ -89,7 +91,6 @@ if character_objects:
         bpy.context.view_layer.objects.active = hero
     founder_status = 'exported' if export_selected(founder_path) else 'failed_empty_export'
 
-# World preview: generated world/detail geometry and lighting only; no duplicate hero.
 world_objects = [
     obj for obj in bpy.data.objects
     if obj.name.startswith('SG_GEN_') and not obj.name.startswith('SG_GEN_GAME_')
@@ -116,6 +117,8 @@ if hero is not None:
 
 founder_size = founder_path.stat().st_size if founder_path.exists() else 0
 world_size = world_path.stat().st_size if world_path.exists() else 0
+founder_rig_ready = bool(hero_bone_count > 0 and skinned_mesh_count > 0)
+founder_animation_ready = bool(animation_required_count > 0 and animation_ready_count == animation_required_count and pose_action_names)
 manifest = {
     'generated_utc': datetime.now(timezone.utc).isoformat(),
     'preview_only': True,
@@ -127,8 +130,16 @@ manifest = {
     'hero_object': hero.name if hero is not None else None,
     'hero_bone_count': hero_bone_count,
     'skinned_mesh_count': skinned_mesh_count,
+    'founder_rig_ready': founder_rig_ready,
     'animation_action_count': len(all_action_names),
     'animation_action_names': all_action_names,
+    'pose_action_count': len(pose_action_names),
+    'pose_action_names': pose_action_names,
+    'animation_audit_status': animation_status,
+    'animation_ready_count': animation_ready_count,
+    'animation_required_count': animation_required_count,
+    'animation_missing': animation_missing,
+    'founder_animation_ready': founder_animation_ready,
     'world_status': world_status,
     'world_glb': str(world_path),
     'world_glb_bytes': world_size,
@@ -145,6 +156,12 @@ scene['sg_phone_preview_manifest'] = str(manifest_path)
 scene['sg_phone_preview_export_utc'] = manifest['generated_utc']
 scene['sg_phone_preview_founder_bytes'] = founder_size
 scene['sg_phone_preview_action_count'] = len(all_action_names)
+scene['sg_phone_preview_pose_action_count'] = len(pose_action_names)
+scene['sg_phone_preview_founder_rig_ready'] = founder_rig_ready
+scene['sg_phone_preview_founder_animation_ready'] = founder_animation_ready
 print(f'[SUM GREATNESS] Phone preview exports: founder={founder_status} ({founder_size} bytes), world={world_status} ({world_size} bytes)')
-print(f'[SUM GREATNESS] Founder rig: bones={hero_bone_count}, skinned_meshes={skinned_mesh_count}, actions={len(all_action_names)}')
+print(f'[SUM GREATNESS] Founder rig: bones={hero_bone_count}, skinned_meshes={skinned_mesh_count}, rig_ready={founder_rig_ready}')
+print(f'[SUM GREATNESS] Founder animations: pose_actions={len(pose_action_names)}, audit={animation_status}, ready={animation_ready_count}/{animation_required_count}')
+if animation_missing:
+    print(f'[SUM GREATNESS] Missing founder animation states: {animation_missing}')
 print(f'[SUM GREATNESS] Preview export folder: {export_root}')
