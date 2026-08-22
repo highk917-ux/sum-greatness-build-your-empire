@@ -7,3 +7,5 @@ dist/
 !.env.example
 .idea/
 android/.idea/
+blender_bridge/automation/backups/
+blender_bridge/automation/state/
