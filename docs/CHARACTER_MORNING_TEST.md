@@ -56,22 +56,49 @@ The controller now maps named clips for idle, walk, run, stop, turn-left, and tu
 
 ## 6. Interaction foundation test
 
-After real interaction targets are connected in the world, test:
+The branch now includes `src/world/interactionDirector.js`, which connects the reusable interactable registry to the interaction state controller, door controllers, building portals, and NPC gesture controllers without hard-coding those systems into player movement.
 
-- pickup -> carry -> place
-- pickup -> carry -> drop
-- cancel/reset during a pending interaction
-- open door -> door rotates open
-- close door -> door rotates closed
-- enter only when the door is open
-- exit only when the door is open
+After real interaction targets are registered in the world, test in this order:
 
-The interaction state controller now cancels stale timers, derives timing from real animation clips when available, and exposes attach/detach/open/close callbacks so world objects can be connected without rewriting the state machine.
+1. Walk toward a pickup target and confirm it becomes the nearest focused interactable.
+2. Trigger pickup and verify `pickup -> carry` with the target attached by its callback.
+3. Trigger place and verify `carry -> place -> idle` with the target detached at the requested position.
+4. Repeat pickup and use drop instead of place.
+5. Trigger cancel/reset during a pending interaction and verify no stale callback fires afterward.
+6. Approach a door, trigger open, and verify the reusable door controller rotates it open.
+7. Trigger the same door again and verify it closes.
+8. Confirm a building portal refuses entry while its door is closed.
+9. Open the door, enter, then exit, and verify the player moves to the configured portal positions.
+10. Walk away from an interactable and verify focus clears instead of leaving a stale prompt/target.
+
+The interaction director also updates registered door controllers each frame, so door motion stays independent from the player controller.
 
 ## 7. NPC gesture test
 
-When an NPC has a compatible animation controller, test wave, talk, point, and return-to-idle. Missing gesture clips should report unavailable instead of pretending they played.
+Register an NPC with its gesture controller, then test:
+
+1. wave
+2. talk
+3. point
+4. return to idle
+
+Missing gesture clips should report unavailable instead of pretending they played. The interaction director can route the NPC interaction to the NPC's configured default gesture without adding NPC-specific logic to the player controller.
+
+## 8. Regression checks
+
+Before moving on to storyline/gameplay work, confirm all of these still work together:
+
+- founder GLB remains visible while walking and running
+- fallback block character does not become visible after an interaction
+- character movement resumes after pickup/place/door animations finish
+- held objects do not remain parented after place/drop
+- door state and visual rotation stay in sync
+- entering/exiting does not leave the player in an interaction-busy state
+- no repeated interaction fires while an earlier interaction timer is active
+- no new Android/WebView errors appear during five minutes of movement and interactions
 
 ## Current hard blocker
 
-GitHub code can prepare and validate the loading/interaction systems, but it cannot create or run the local Blender export or install/run the Android build on the physical phone. The decisive morning test is therefore the local export of `sum-greatness-founder.glb`, followed by the Android packaging and phone run.
+GitHub-side code can prepare and harden the loading/interaction systems, but it cannot create or run the local Blender export or install/run the Android build on the physical phone. The decisive morning test is therefore the local export of `sum-greatness-founder.glb`, followed by Android packaging and the phone run.
+
+Do not start wiring storyline progression into the live game loop until the founder GLB, locomotion, pickup/place, door, portal, and NPC gesture regression checks above pass on the phone. The next gameplay/story layer should remain isolated until that foundation is confirmed stable.
