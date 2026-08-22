@@ -49,6 +49,26 @@ function Assert-SameFile([string]$expected,[string]$actual,[string]$label) {
     Log "$label verified ($bytes bytes, SHA256 $actualHash)"
 }
 
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw 'git is not available in PATH.'
+}
+$repoRoot = (git rev-parse --show-toplevel 2>$null).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $repoRoot) {
+    throw "This folder is not a Git repository: $Repo"
+}
+if ([System.IO.Path]::GetFullPath($repoRoot).TrimEnd('\') -ne [System.IO.Path]::GetFullPath($Repo).TrimEnd('\')) {
+    throw "Repository path mismatch. Expected $Repo but Git resolved $repoRoot"
+}
+$currentBranch = (git branch --show-current).Trim()
+if ($currentBranch -ne 'automation/character-interactions') {
+    throw "Wrong branch for the founder phone preview: $currentBranch. Checkout automation/character-interactions and pull before packaging."
+}
+$remoteUrl = (git remote get-url origin 2>$null).Trim()
+if ($remoteUrl -notmatch 'highk917-ux[\\/]sum-greatness-build-your-empire(?:\.git)?$') {
+    throw "Unexpected Git origin: $remoteUrl"
+}
+Log "Repository preflight passed: branch=$currentBranch origin=$remoteUrl"
+
 if (-not (Test-Path $manifestSource)) {
     throw "Phone preview manifest not found. Run Blender bridge first: $manifestSource"
 }
