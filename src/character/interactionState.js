@@ -7,28 +7,56 @@ export function createInteractionState({playerController=null,onStateChange=()=>
  let heldObject=null;
  let activeTarget=null;
  let busyUntil=0;
+ let transitionToken=0;
+ let pendingTimer=null;
 
  function emit(next,detail={}){
   state=next;
   onStateChange({state,heldObject,activeTarget,...detail});
  }
 
- function canStart(){return performance.now()>=busyUntil}
+ function clearPending(){
+  if(pendingTimer){clearTimeout(pendingTimer);pendingTimer=null}
+  transitionToken++;
+ }
+
+ function schedule(callback,delay){
+  const token=transitionToken;
+  pendingTimer=setTimeout(()=>{
+   pendingTimer=null;
+   if(token!==transitionToken)return;
+   callback();
+  },Math.max(0,delay));
+ }
+
+ function canStart(){return performance.now()>=busyUntil&&!pendingTimer}
 
  function lockFor(ms){busyUntil=performance.now()+Math.max(0,ms||0)}
 
  function play(name,options={}){
-  const played=playerController?.playInteraction?.(name,options)??false;
-  return played;
+  return playerController?.playInteraction?.(name,options)??false;
  }
 
- function start(name,{target=null,duration=650,animation=name,animationOptions={}}={}){
+ function resolveDuration(animation,fallback){
+  const clipDuration=playerController?.getAnimationDuration?.(animation);
+  if(Number.isFinite(clipDuration)&&clipDuration>0)return Math.round(clipDuration*1000);
+  return fallback;
+ }
+
+ function start(name,{target=null,duration,animation=name,animationOptions={}}={}){
   if(!INTERACTION_STATES.has(name)||!canStart())return false;
+  const resolvedDuration=resolveDuration(animation,duration??650);
   activeTarget=target;
-  emit(name,{target});
+  emit(name,{target,duration:resolvedDuration});
   play(animation,animationOptions);
-  lockFor(duration);
-  return true;
+  lockFor(resolvedDuration);
+  return resolvedDuration;
+ }
+
+ function finishIdle(detail={}){
+  activeTarget=null;
+  busyUntil=0;
+  emit(heldObject?'carry':'idle',detail);
  }
 
  return {
@@ -37,53 +65,84 @@ export function createInteractionState({playerController=null,onStateChange=()=>
   get activeTarget(){return activeTarget},
   get busy(){return !canStart()},
   setPlayerController(controller){playerController=controller},
+  cancel(reason='cancelled'){
+   clearPending();
+   busyUntil=0;
+   activeTarget=null;
+   playerController?.setCarry?.(Boolean(heldObject));
+   emit(heldObject?'carry':'idle',{reason});
+  },
   reset(){
+   clearPending();
    heldObject=null;
    activeTarget=null;
    busyUntil=0;
    playerController?.setCarry?.(false);
    emit('idle');
   },
-  pickup(target,{duration=700}={}){
-   if(!target||heldObject||!start('pickup',{target,duration}))return false;
-   setTimeout(()=>{
+  pickup(target,{duration,onAttach}={}){
+   if(!target||heldObject)return false;
+   const resolved=start('pickup',{target,duration:duration??700});
+   if(!resolved)return false;
+   schedule(()=>{
     heldObject=target;
+    onAttach?.(target);
     playerController?.setCarry?.(true);
+    activeTarget=target;
+    busyUntil=0;
     emit('carry',{target});
-   },Math.max(0,duration-80));
+   },Math.max(0,resolved-80));
    return true;
   },
-  place({position=null,duration=650}={}){
-   if(!heldObject||!start('place',{target:heldObject,duration}))return false;
+  place({position=null,duration,onDetach}={}){
+   if(!heldObject)return false;
    const object=heldObject;
-   setTimeout(()=>{
+   const resolved=start('place',{target:object,duration:duration??650});
+   if(!resolved)return false;
+   schedule(()=>{
+    onDetach?.(object,position);
     if(position&&object?.position?.copy)object.position.copy(position);
     heldObject=null;
-    activeTarget=null;
     playerController?.setCarry?.(false);
-    emit('idle',{placed:object});
-   },Math.max(0,duration-80));
+    finishIdle({placed:object});
+   },Math.max(0,resolved-80));
    return true;
   },
-  drop(position){return this.place({position,duration:350})},
-  openDoor(door,{duration=650}={}){
-   if(!door||!start('openDoor',{target:door,duration}))return false;
-   setTimeout(()=>{door.userData={...door.userData,isOpen:true};emit('idle',{door})},Math.max(0,duration-60));
+  drop(position,options={}){return this.place({position,duration:350,...options})},
+  openDoor(door,{duration,onOpen}={}){
+   if(!door)return false;
+   const resolved=start('openDoor',{target:door,duration:duration??650});
+   if(!resolved)return false;
+   schedule(()=>{
+    door.userData={...door.userData,isOpen:true};
+    onOpen?.(door);
+    finishIdle({door});
+   },Math.max(0,resolved-60));
    return true;
   },
-  closeDoor(door,{duration=650}={}){
-   if(!door||!start('closeDoor',{target:door,duration}))return false;
-   setTimeout(()=>{door.userData={...door.userData,isOpen:false};emit('idle',{door})},Math.max(0,duration-60));
+  closeDoor(door,{duration,onClose}={}){
+   if(!door)return false;
+   const resolved=start('closeDoor',{target:door,duration:duration??650});
+   if(!resolved)return false;
+   schedule(()=>{
+    door.userData={...door.userData,isOpen:false};
+    onClose?.(door);
+    finishIdle({door});
+   },Math.max(0,resolved-60));
    return true;
   },
-  enter(door,{duration=900,onComplete}={}){
-   if(!door||!start('enter',{target:door,duration}))return false;
-   setTimeout(()=>{onComplete?.(door);activeTarget=null;emit('idle',{door})},Math.max(0,duration-60));
+  enter(door,{duration,onComplete}={}){
+   if(!door)return false;
+   const resolved=start('enter',{target:door,duration:duration??900});
+   if(!resolved)return false;
+   schedule(()=>{onComplete?.(door);finishIdle({door})},Math.max(0,resolved-60));
    return true;
   },
-  exit(door,{duration=900,onComplete}={}){
-   if(!door||!start('exit',{target:door,duration}))return false;
-   setTimeout(()=>{onComplete?.(door);activeTarget=null;emit('idle',{door})},Math.max(0,duration-60));
+  exit(door,{duration,onComplete}={}){
+   if(!door)return false;
+   const resolved=start('exit',{target:door,duration:duration??900});
+   if(!resolved)return false;
+   schedule(()=>{onComplete?.(door);finishIdle({door})},Math.max(0,resolved-60));
    return true;
   }
  };
