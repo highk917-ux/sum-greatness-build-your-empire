@@ -34,13 +34,25 @@ function findClip(animations,matchers=[]){
 }
 
 function inspectRig(model){
- let skinnedMeshes=0,bones=0,meshes=0;
+ let skinnedMeshes=0,bones=0,meshes=0,vertices=0;
  model.traverse(object=>{
-  if(object.isMesh)meshes++;
+  if(object.isMesh){
+   meshes++;
+   vertices+=object.geometry?.attributes?.position?.count||0;
+  }
   if(object.isSkinnedMesh)skinnedMeshes++;
   if(object.isBone)bones++;
  });
- return {meshes,skinnedMeshes,bones,isRigged:skinnedMeshes>0&&bones>0};
+ return {meshes,skinnedMeshes,bones,vertices,isRigged:skinnedMeshes>0&&bones>0};
+}
+
+function animationReport(animations,clips){
+ return {
+  clipCount:animations.length,
+  names:animations.map(clip=>clip.name),
+  mapped:Object.fromEntries(Object.entries(clips).map(([name,clip])=>[name,clip?.name||null])),
+  missing:Object.keys(clips).filter(name=>!clips[name])
+ };
 }
 
 export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=resolveModelUrl()}={}){
@@ -51,8 +63,9 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
   const gltf=await new GLTFLoader().loadAsync(modelUrl);
   const model=gltf.scene;
   const animations=gltf.animations||[];
+  if(!model)throw new Error('Founder GLB did not contain a scene');
   const rig=inspectRig(model);
-  if(!model||rig.meshes===0)throw new Error('Founder GLB contains no renderable meshes');
+  if(rig.meshes===0||rig.vertices===0)throw new Error('Founder GLB contains no renderable geometry');
 
   const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3());
   if(!Number.isFinite(size.y)||size.y<=0)throw new Error('Founder GLB has invalid bounds');
@@ -67,6 +80,7 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
 
   const mixer=animations.length?new THREE.AnimationMixer(model):null;
   const clips=Object.fromEntries(Object.entries(CLIP_MATCHERS).map(([name,matchers])=>[name,findClip(animations,matchers)]));
+  const report=animationReport(animations,clips);
   let currentAction=null,currentMotion='',lockedUntil=0,wasMoving=false;
 
   function playState(name,{force=false,fade=.16,loop=LOOPING.has(name),clamp=true,allowFallback=true,timeScale=1}={}){
@@ -99,15 +113,18 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
   }
 
   playState('idle',{force:true});
-  const availableAnimations=Object.fromEntries(Object.entries(clips).map(([name,clip])=>[name,clip?.name||null]));
-  console.info('[SUM GREATNESS] Founder GLB loaded',{modelUrl,rig,animations:availableAnimations});
+  console.info('[SUM GREATNESS] Founder GLB loaded',{modelUrl,rig,animations:report});
+  if(!rig.isRigged)console.warn('[SUM GREATNESS] Founder GLB is visible but not skinned/rigged; skeletal movement clips cannot deform it.',rig);
+  if(report.missing.length)console.info('[SUM GREATNESS] Founder animation clips still needed',report.missing);
 
   return {
    model,
    modelUrl,
    rig,
-   availableAnimations,
+   animationReport:report,
+   availableAnimations:report.mapped,
    hasAnimation:name=>Boolean(clips[name]),
+   getAnimationDuration(name){return clips[name]?.duration||0},
    get currentMotion(){return currentMotion},
    playInteraction,
    playGesture(name,options={}){
