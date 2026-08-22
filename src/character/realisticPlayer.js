@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-const MODEL_URL='/assets/models/sum-greatness-founder.glb';
+const MODEL_PATH='assets/models/sum-greatness-founder.glb';
 const CLIP_MATCHERS={
  idle:[/idle/i,/breath/i,/stand/i],
  walk:[/walk/i],
@@ -15,36 +15,61 @@ const CLIP_MATCHERS={
  openDoor:[/open.*door/i,/door.*open/i],
  closeDoor:[/close.*door/i,/door.*close/i],
  enter:[/enter/i,/walk.*in/i],
- exit:[/exit/i,/walk.*out/i]
+ exit:[/exit/i,/walk.*out/i],
+ wave:[/wave/i,/greet/i],
+ talk:[/talk/i,/speak/i,/conversation/i],
+ point:[/point/i,/gesture/i]
 };
-const LOOPING=new Set(['idle','walk','run','carry']);
+const LOOPING=new Set(['idle','walk','run','carry','talk']);
+
+function resolveModelUrl(){
+ // document.baseURI works in Vite preview and in Capacitor's packaged WebView.
+ // Avoid a root-only path so Android can resolve the bundled asset even when
+ // the app is served from a non-root base URL.
+ return new URL(MODEL_PATH,document.baseURI).href;
+}
 
 function findClip(animations,matchers=[]){
  return animations.find(clip=>matchers.some(rx=>rx.test(clip.name)));
 }
 
-export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
+function inspectRig(model){
+ let skinnedMeshes=0,bones=0,meshes=0;
+ model.traverse(object=>{
+  if(object.isMesh)meshes++;
+  if(object.isSkinnedMesh)skinnedMeshes++;
+  if(object.isBone)bones++;
+ });
+ return {meshes,skinnedMeshes,bones,isRigged:skinnedMeshes>0&&bones>0};
+}
+
+export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=resolveModelUrl()}={}){
+ const fallbackChildren=[...player.children];
  try{
   // Load the packaged GLB directly. A HEAD preflight can fail inside Android
   // WebView/Capacitor even when the same local asset is available to GET.
-  const gltf=await new GLTFLoader().loadAsync(MODEL_URL);
+  const gltf=await new GLTFLoader().loadAsync(modelUrl);
   const model=gltf.scene;
   const animations=gltf.animations||[];
+  const rig=inspectRig(model);
+  if(!model||rig.meshes===0)throw new Error('Founder GLB contains no renderable meshes');
+
   const bounds=new THREE.Box3().setFromObject(model),size=bounds.getSize(new THREE.Vector3());
-  if(size.y>0)model.scale.setScalar(3.35/size.y);
+  if(!Number.isFinite(size.y)||size.y<=0)throw new Error('Founder GLB has invalid bounds');
+  model.scale.setScalar(3.35/size.y);
   const grounded=new THREE.Box3().setFromObject(model);model.position.y-=grounded.min.y;
   model.rotation.y=Math.PI;
   model.traverse(object=>{if(object.isMesh){object.castShadow=!mobileDevice;object.receiveShadow=true;object.frustumCulled=true}});
 
-  const fallbackChildren=[...player.children];
+  // Hide the fallback only after the real GLB has fully loaded and passed sanity checks.
   fallbackChildren.forEach(child=>child.visible=false);
   player.add(model);
 
   const mixer=animations.length?new THREE.AnimationMixer(model):null;
   const clips=Object.fromEntries(Object.entries(CLIP_MATCHERS).map(([name,matchers])=>[name,findClip(animations,matchers)]));
-  let currentAction=null,currentMotion='',lockedUntil=0,wasMoving=false,wasRunning=false;
+  let currentAction=null,currentMotion='',lockedUntil=0,wasMoving=false;
 
-  function playState(name,{force=false,fade=.16,loop=LOOPING.has(name),clamp=true,allowFallback=true}={}){
+  function playState(name,{force=false,fade=.16,loop=LOOPING.has(name),clamp=true,allowFallback=true,timeScale=1}={}){
    if(!mixer)return false;
    const now=performance.now();
    if(!force&&now<lockedUntil)return false;
@@ -55,15 +80,15 @@ export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
    const next=mixer.clipAction(clip);
    next.reset();
    next.enabled=true;
-   next.setEffectiveTimeScale(1);
+   next.setEffectiveTimeScale(timeScale);
    next.setEffectiveWeight(1);
    next.setLoop(loop?THREE.LoopRepeat:THREE.LoopOnce,loop?Infinity:1);
    next.clampWhenFinished=!loop&&clamp;
    next.fadeIn(fade).play();
-   currentAction?.fadeOut(fade);
+   if(currentAction&&currentAction!==next)currentAction.fadeOut(fade);
    currentAction=next;
    currentMotion=name;
-   if(!loop)lockedUntil=now+Math.max(120,clip.duration*1000-80);
+   if(!loop)lockedUntil=now+Math.max(120,(clip.duration/Math.max(.01,timeScale))*1000-80);
    return true;
   }
 
@@ -75,14 +100,20 @@ export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
 
   playState('idle',{force:true});
   const availableAnimations=Object.fromEntries(Object.entries(clips).map(([name,clip])=>[name,clip?.name||null]));
-  console.info('[SUM GREATNESS] Skeletal animation clips:',availableAnimations);
+  console.info('[SUM GREATNESS] Founder GLB loaded',{modelUrl,rig,animations:availableAnimations});
 
   return {
    model,
+   modelUrl,
+   rig,
    availableAnimations,
    hasAnimation:name=>Boolean(clips[name]),
    get currentMotion(){return currentMotion},
    playInteraction,
+   playGesture(name,options={}){
+    if(!['wave','talk','point'].includes(name))return false;
+    return playState(name,{force:true,allowFallback:false,...options});
+   },
    setCarry(active=true){
     if(active&&!clips.carry)return false;
     return playState(active?'carry':'idle',{force:true,loop:true,allowFallback:!active});
@@ -101,13 +132,23 @@ export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
     }
     mixer?.update(delta);
     wasMoving=moving;
-    wasRunning=running;
+   },
+   dispose(){
+    mixer?.stopAllAction();
+    player.remove(model);
+    model.traverse(object=>{
+     if(object.geometry?.dispose)object.geometry.dispose();
+     const materials=Array.isArray(object.material)?object.material:[object.material];
+     materials.filter(Boolean).forEach(material=>material.dispose?.());
+    });
+    fallbackChildren.forEach(child=>child.visible=true);
    }
   };
  }catch(error){
   // Keep the existing approved fallback character visible until a valid rigged GLB
   // is exported into public/assets/models/sum-greatness-founder.glb.
-  console.info('Realistic player model will activate after the Blender GLB is added.',error);
+  fallbackChildren.forEach(child=>child.visible=true);
+  console.warn('[SUM GREATNESS] Founder GLB unavailable; fallback remains active.',{modelUrl,error});
   return null;
  }
 }
