@@ -24,6 +24,19 @@ function Log([string]$message) {
     Add-Content -Path $logFile -Value $line
 }
 
+function Assert-Glb([string]$path,[string]$label) {
+    if (-not (Test-Path $path)) { throw "$label missing: $path" }
+    $bytes = [System.IO.File]::ReadAllBytes($path)
+    if ($bytes.Length -lt 20) { throw "$label is too small to be a valid GLB: $($bytes.Length) bytes" }
+    $magic = [System.Text.Encoding]::ASCII.GetString($bytes,0,4)
+    if ($magic -ne 'glTF') { throw "$label is not a GLB file (missing glTF magic header): $path" }
+    $version = [BitConverter]::ToUInt32($bytes,4)
+    $declaredLength = [BitConverter]::ToUInt32($bytes,8)
+    if ($version -ne 2) { throw "$label uses unsupported GLB version $version; expected version 2" }
+    if ($declaredLength -ne $bytes.Length) { throw "$label length header mismatch. Header=$declaredLength Actual=$($bytes.Length)" }
+    Log "$label structure verified as GLB v$version ($($bytes.Length) bytes)"
+}
+
 function Assert-SameFile([string]$expected,[string]$actual,[string]$label) {
     if (-not (Test-Path $actual)) { throw "$label missing: $actual" }
     $expectedHash = (Get-FileHash -Algorithm SHA256 $expected).Hash
@@ -41,6 +54,7 @@ if (-not (Test-Path $founderSource)) {
 if ((Get-Item $founderSource).Length -lt 1024) {
     throw "Founder preview GLB is unexpectedly small: $founderSource"
 }
+Assert-Glb $founderSource 'Founder source GLB'
 
 # These are local generated preview binaries. Keep Git's unattended pull check clean.
 $exclude = Join-Path $Repo '.git\info\exclude'
@@ -55,8 +69,10 @@ foreach ($line in $excludeLines) {
 }
 
 Copy-Item $founderSource $founderTarget -Force
+Assert-Glb $founderTarget 'Public founder GLB'
 Assert-SameFile $founderSource $founderTarget 'Public founder GLB'
 if (Test-Path $worldSource) {
+    Assert-Glb $worldSource 'World preview GLB'
     Copy-Item $worldSource $worldTarget -Force
     Log "World preview copied to public/assets/models/sum-greatness-world-preview.glb"
 }
@@ -70,14 +86,20 @@ if (-not (Test-Path (Join-Path $Repo 'node_modules'))) {
     if ($LASTEXITCODE -ne 0) { throw "npm install failed with exit code $LASTEXITCODE" }
 }
 
+Log 'Running interaction foundation tests'
+npm test
+if ($LASTEXITCODE -ne 0) { throw "npm test failed with exit code $LASTEXITCODE" }
+
 Log 'Running Vite production build'
 npm run build
 if ($LASTEXITCODE -ne 0) { throw "npm run build failed with exit code $LASTEXITCODE" }
+Assert-Glb $distFounder 'Vite dist founder GLB'
 Assert-SameFile $founderSource $distFounder 'Vite dist founder GLB'
 
 Log 'Syncing web build and preview assets to Android with Capacitor'
 npx cap sync android
 if ($LASTEXITCODE -ne 0) { throw "npx cap sync android failed with exit code $LASTEXITCODE" }
+Assert-Glb $androidFounder 'Android packaged founder GLB'
 Assert-SameFile $founderSource $androidFounder 'Android packaged founder GLB'
 
-Log 'PHONE PREVIEW BUILD PREP COMPLETE. Founder GLB is byte-for-byte verified in public, dist, and Android assets. Open Android Studio and Run on the connected phone.'
+Log 'PHONE PREVIEW BUILD PREP COMPLETE. Founder GLB is structurally valid and byte-for-byte verified in public, dist, and Android assets. Open Android Studio and Run on the connected phone.'
