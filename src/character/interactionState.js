@@ -9,10 +9,11 @@ export function createInteractionState({playerController=null,onStateChange=()=>
  let busyUntil=0;
  let transitionToken=0;
  let pendingTimer=null;
+ let lastAnimationPlayed=false;
 
  function emit(next,detail={}){
   state=next;
-  onStateChange({state,heldObject,activeTarget,...detail});
+  onStateChange({state,heldObject,activeTarget,lastAnimationPlayed,...detail});
  }
 
  function clearPending(){
@@ -34,7 +35,8 @@ export function createInteractionState({playerController=null,onStateChange=()=>
  function lockFor(ms){busyUntil=performance.now()+Math.max(0,ms||0)}
 
  function play(name,options={}){
-  return playerController?.playInteraction?.(name,options)??false;
+  lastAnimationPlayed=playerController?.playInteraction?.(name,options)??false;
+  return lastAnimationPlayed;
  }
 
  function resolveDuration(animation,fallback){
@@ -47,8 +49,8 @@ export function createInteractionState({playerController=null,onStateChange=()=>
   if(!INTERACTION_STATES.has(name)||!canStart())return false;
   const resolvedDuration=resolveDuration(animation,duration??650);
   activeTarget=target;
-  emit(name,{target,duration:resolvedDuration});
-  play(animation,animationOptions);
+  const animationPlayed=play(animation,animationOptions);
+  emit(name,{target,duration:resolvedDuration,animation,animationPlayed});
   lockFor(resolvedDuration);
   return resolvedDuration;
  }
@@ -59,11 +61,27 @@ export function createInteractionState({playerController=null,onStateChange=()=>
   emit(heldObject?'carry':'idle',detail);
  }
 
+ function placeHeld({position=null,duration,onDetach}={}){
+  if(!heldObject)return false;
+  const object=heldObject;
+  const resolved=start('place',{target:object,duration:duration??650});
+  if(!resolved)return false;
+  schedule(()=>{
+   onDetach?.(object,position);
+   if(position&&object?.position?.copy)object.position.copy(position);
+   heldObject=null;
+   playerController?.setCarry?.(false);
+   finishIdle({placed:object});
+  },Math.max(0,resolved-80));
+  return true;
+ }
+
  return {
   get state(){return state},
   get heldObject(){return heldObject},
   get activeTarget(){return activeTarget},
   get busy(){return !canStart()},
+  get lastAnimationPlayed(){return lastAnimationPlayed},
   setPlayerController(controller){playerController=controller},
   cancel(reason='cancelled'){
    clearPending();
@@ -77,6 +95,7 @@ export function createInteractionState({playerController=null,onStateChange=()=>
    heldObject=null;
    activeTarget=null;
    busyUntil=0;
+   lastAnimationPlayed=false;
    playerController?.setCarry?.(false);
    emit('idle');
   },
@@ -94,21 +113,8 @@ export function createInteractionState({playerController=null,onStateChange=()=>
    },Math.max(0,resolved-80));
    return true;
   },
-  place({position=null,duration,onDetach}={}){
-   if(!heldObject)return false;
-   const object=heldObject;
-   const resolved=start('place',{target:object,duration:duration??650});
-   if(!resolved)return false;
-   schedule(()=>{
-    onDetach?.(object,position);
-    if(position&&object?.position?.copy)object.position.copy(position);
-    heldObject=null;
-    playerController?.setCarry?.(false);
-    finishIdle({placed:object});
-   },Math.max(0,resolved-80));
-   return true;
-  },
-  drop(position,options={}){return this.place({position,duration:350,...options})},
+  place:placeHeld,
+  drop(position,options={}){return placeHeld({position,duration:350,...options})},
   openDoor(door,{duration,onOpen}={}){
    if(!door)return false;
    const resolved=start('openDoor',{target:door,duration:duration??650});
