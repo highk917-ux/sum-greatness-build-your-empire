@@ -17,9 +17,8 @@ function findClip(animations,...patterns){
 
 export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
  try{
-  const response=await fetch(MODEL_URL,{method:'HEAD'});
-  if(!response.ok)return null;
-
+  // Load the GLB directly. Android/Capacitor can reject or mishandle HEAD
+  // requests against packaged local assets even when a normal GET succeeds.
   const gltf=await new GLTFLoader().loadAsync(MODEL_URL);
   const model=gltf.scene;
   const animations=gltf.animations||[];
@@ -31,17 +30,26 @@ export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
   model.position.y-=grounded.min.y;
   model.rotation.y=Math.PI;
 
+  let renderableMeshCount=0;
   model.traverse(object=>{
    if(object.isMesh){
+    renderableMeshCount++;
+    object.visible=true;
     object.castShadow=!mobileDevice;
     object.receiveShadow=true;
     object.frustumCulled=true;
    }
   });
 
+  if(!renderableMeshCount){
+   throw new Error('Founder GLB loaded but contained no renderable meshes.');
+  }
+
   const fallbackChildren=[...player.children];
-  fallbackChildren.forEach(child=>child.visible=false);
   player.add(model);
+  fallbackChildren.forEach(child=>child.visible=false);
+
+  console.info(`[SUM GREATNESS] Founder GLB loaded (${renderableMeshCount} meshes, ${animations.length} animation clips).`);
 
   if(!animations.length){
    console.info('[SUM GREATNESS] Founder GLB loaded without animation clips.');
@@ -165,7 +173,7 @@ export async function attachRealisticPlayer(player,{mobileDevice=false}={}){
    },
   };
  }catch(error){
-  console.info('Realistic player model will activate after the Blender GLB is added.',error);
+  console.error('[SUM GREATNESS] Founder GLB failed to load; using fallback character.',error);
   return null;
  }
 }
