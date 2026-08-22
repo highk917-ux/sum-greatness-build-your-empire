@@ -46,16 +46,22 @@ From the repository root run:
 powershell -ExecutionPolicy Bypass -File .\blender_bridge\automation\prepare_phone_preview.ps1
 ```
 
-This script copies the generated founder GLB into `public/assets/models`, runs the Vite production build, syncs Capacitor Android assets, and verifies the founder file byte-for-byte with SHA-256 at all three stages.
+The script now performs four checks before you ever open Android Studio:
 
-Expected success messages:
+1. Validates that the Blender export is a real GLB v2 file with a correct `glTF` header and matching declared byte length.
+2. Runs `npm test` to exercise pickup/carry/place, cancel safety, doors, portals, and interactable selection.
+3. Runs the Vite production build and Capacitor Android sync.
+4. Verifies the founder GLB byte-for-byte with SHA-256 in `public`, `dist`, and Android packaged assets.
 
-1. `Public founder GLB verified`
-2. `Vite dist founder GLB verified`
-3. `Android packaged founder GLB verified`
-4. `PHONE PREVIEW BUILD PREP COMPLETE`
+Expected success messages include:
 
-A missing or changed hash means the packaging stage that reported the mismatch is the blocker.
+1. `Founder source GLB structure verified as GLB v2`
+2. `Public founder GLB verified`
+3. `Vite dist founder GLB verified`
+4. `Android packaged founder GLB verified`
+5. `PHONE PREVIEW BUILD PREP COMPLETE`
+
+If this script stops, use the last message as the blocker. Do not continue to Android Studio until it completes successfully.
 
 ## 4. Character load test
 
@@ -66,7 +72,7 @@ Launch the installed Android build and verify:
 3. The model is facing the expected forward direction.
 4. There are no WebView/console errors reporting `Founder GLB unavailable`.
 5. The console reports founder geometry counts and the mapped/missing animation clip list.
-6. The successful status reports which model URL loaded. The loader now tries both Capacitor-friendly relative and origin-root asset URLs before accepting the fallback.
+6. The successful status reports which model URL loaded. The loader tries both Capacitor-friendly relative and origin-root asset URLs before accepting the fallback.
 
 ## 5. Skeletal movement test
 
@@ -97,7 +103,7 @@ After real interaction targets are registered in the world, test in this order:
 9. Open the door, enter, then exit, and verify the player moves to the configured portal positions.
 10. Walk away from an interactable and verify focus clears instead of leaving a stale prompt/target.
 
-The interaction state now reports whether the requested real animation clip actually played through `lastAnimationPlayed`, which helps separate a logic success from a missing Blender animation clip.
+The interaction state reports whether the requested real animation clip actually played through `lastAnimationPlayed`, which helps separate a logic success from a missing Blender animation clip.
 
 ## 7. NPC gesture test
 
@@ -110,7 +116,11 @@ Register an NPC with its gesture controller, then test:
 
 Missing gesture clips should report unavailable instead of pretending they played. The interaction director can route the NPC interaction to the NPC's configured default gesture without adding NPC-specific logic to the player controller.
 
-## 8. Regression checks
+## 8. Profile test
+
+Open **Profile** and verify the Current Avatar card appears above Character Studio, the selected avatar button is highlighted, and changing style/outfit/skin refreshes the card. The final face/body likeness must remain tied to approved reference assets; the preview must not invent a replacement likeness.
+
+## 9. Regression checks
 
 Before moving on to storyline/gameplay work, confirm all of these still work together:
 
@@ -121,10 +131,11 @@ Before moving on to storyline/gameplay work, confirm all of these still work tog
 - door state and visual rotation stay in sync
 - entering/exiting does not leave the player in an interaction-busy state
 - no repeated interaction fires while an earlier interaction timer is active
+- Profile preview still opens and updates correctly
 - no new Android/WebView errors appear during five minutes of movement and interactions
 
 ## Current hard blocker
 
 GitHub-side code can prepare and harden the loading/interaction systems, but it cannot run the local Blender export or install/run the Android build on the physical phone. The decisive morning test is therefore the local export of `sum-greatness-founder.glb`, followed by verified Android packaging and the phone run.
 
-Do not wire storyline progression into the live game loop until the founder GLB, locomotion, pickup/place, door, portal, and NPC gesture regression checks above pass on the phone. The next gameplay/story layer should remain isolated until that foundation is confirmed stable.
+Do not wire storyline progression into the live game loop until the founder GLB, locomotion, pickup/place, door, portal, NPC gesture, and Profile regression checks above pass on the phone. Keep the next gameplay/story layer isolated until that foundation is confirmed stable.
