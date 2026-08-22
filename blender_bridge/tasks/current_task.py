@@ -17,6 +17,7 @@ STAGES=[
     '20_san_diego_layout.py',
     '30_export_readiness.py',
     '40_character_fidelity_prepare.py',
+    '45_character_motion_actions.py',
     '50_world_geometry.py',
     '60_lighting_daynight.py',
     '70_gameplay_export_prep.py',
@@ -43,5 +44,5 @@ for stage in STAGES:
     runpy.run_path(str(path),run_name='__main__')
 
 scene['sg_batch_status']='complete'
-scene['sg_batch_next']='copy preview GLBs into mobile assets; npm build; Capacitor Android sync; phone preview; then reference-matched hero likeness and final art'
+scene['sg_batch_next']='copy preview GLBs into mobile assets; npm build; Capacitor Android sync; phone preview; then pickup/carry/place and door/building interaction animations; final hero likeness remains reference-guided'
 print('[SUM GREATNESS] Unattended production batch complete')
