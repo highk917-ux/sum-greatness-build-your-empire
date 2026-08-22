@@ -62,6 +62,17 @@ if character_objects:
     export_selected(founder_path)
     founder_status = 'exported'
 
+# Record generated/available animation actions so the mobile preview can be
+# validated without guessing whether locomotion clips were present at export.
+hero_animation_actions = []
+for action in bpy.data.actions:
+    name = action.name
+    if action.get('sg_generated_motion') or name.lower() in {'sg_idle', 'sg_walk', 'sg_run', 'idle', 'walk', 'run'}:
+        hero_animation_actions.append(name)
+hero_animation_actions = sorted(set(hero_animation_actions))
+required_motion_tokens = ('idle', 'walk', 'run')
+hero_animation_ready = all(any(token in name.lower() for name in hero_animation_actions) for token in required_motion_tokens)
+
 # World preview: generated world/detail geometry and lighting only; no duplicate hero.
 world_objects = [
     obj for obj in bpy.data.objects
@@ -95,6 +106,9 @@ manifest = {
     'founder_status': founder_status,
     'founder_glb': str(founder_path),
     'founder_object_count': len(character_objects),
+    'hero_animation_actions': hero_animation_actions,
+    'hero_animation_ready': hero_animation_ready,
+    'hero_animation_required': ['Idle', 'Walk', 'Run'],
     'world_status': world_status,
     'world_glb': str(world_path),
     'world_object_count': len(world_objects),
@@ -108,5 +122,8 @@ scene['sg_phone_preview_founder_glb'] = str(founder_path)
 scene['sg_phone_preview_world_glb'] = str(world_path)
 scene['sg_phone_preview_manifest'] = str(manifest_path)
 scene['sg_phone_preview_export_utc'] = manifest['generated_utc']
+scene['sg_phone_preview_animation_actions'] = ','.join(hero_animation_actions)
+scene['sg_phone_preview_animation_ready'] = hero_animation_ready
 print(f'[SUM GREATNESS] Phone preview exports: founder={founder_status}, world={world_status}')
+print(f'[SUM GREATNESS] Founder animation clips: {hero_animation_actions or "none"}; ready={hero_animation_ready}')
 print(f'[SUM GREATNESS] Preview export folder: {export_root}')
