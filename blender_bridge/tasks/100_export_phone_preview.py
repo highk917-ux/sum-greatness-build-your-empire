@@ -29,12 +29,32 @@ def clear_selection():
 
 
 def export_selected(path: Path):
-    bpy.ops.export_scene.gltf(
-        filepath=str(path),
-        export_format='GLB',
-        use_selection=True,
-        export_animations=True,
-    )
+    """Export selected objects while enabling all supported animation options."""
+    kwargs = {
+        'filepath': str(path),
+        'export_format': 'GLB',
+        'use_selection': True,
+        'export_animations': True,
+    }
+    # Blender glTF operator options vary across versions. Only pass optional
+    # animation settings exposed by the installed version so unattended export
+    # does not fail because one Blender build renamed/removed a property.
+    try:
+        supported = set(bpy.ops.export_scene.gltf.get_rna_type().properties.keys())
+    except Exception:
+        supported = set()
+    optional = {
+        'export_nla_strips': True,
+        'export_all_actions': True,
+        'export_force_sampling': True,
+        'export_def_bones': True,
+    }
+    for key, value in optional.items():
+        if key in supported:
+            kwargs[key] = value
+    bpy.ops.export_scene.gltf(**kwargs)
+    return path.exists() and path.stat().st_size > 0
+
 
 # Character preview: Human.rig plus all existing SUM_ meshes/accessories.
 hero = bpy.data.objects.get('Human.rig') or bpy.data.objects.get('Human') or bpy.data.objects.get('human.rig')
@@ -42,11 +62,19 @@ character_objects = []
 if hero is not None:
     character_objects.append(hero)
 character_objects.extend(obj for obj in bpy.data.objects if obj.name.startswith('SUM_'))
-# Include direct children of selected character assets (e.g. meshes parented to rig/accessories).
+# Include direct descendants of selected character assets (e.g. meshes parented
+# to the rig or to accessories) without changing approved geometry/materials.
 expanded = list(character_objects)
 for obj in list(character_objects):
     expanded.extend(list(obj.children_recursive))
 character_objects = list(dict.fromkeys(expanded))
+
+all_action_names = sorted(action.name for action in bpy.data.actions)
+hero_bone_count = len(hero.data.bones) if hero is not None and hero.type == 'ARMATURE' else 0
+skinned_mesh_count = sum(
+    1 for obj in character_objects
+    if obj.type == 'MESH' and any(mod.type == 'ARMATURE' for mod in obj.modifiers)
+)
 
 founder_status = 'skipped_no_character'
 if character_objects:
@@ -59,8 +87,7 @@ if character_objects:
             pass
     if hero is not None:
         bpy.context.view_layer.objects.active = hero
-    export_selected(founder_path)
-    founder_status = 'exported'
+    founder_status = 'exported' if export_selected(founder_path) else 'failed_empty_export'
 
 # World preview: generated world/detail geometry and lighting only; no duplicate hero.
 world_objects = [
@@ -77,8 +104,7 @@ if world_objects:
         except Exception:
             pass
     bpy.context.view_layer.objects.active = world_objects[0]
-    export_selected(world_path)
-    world_status = 'exported'
+    world_status = 'exported' if export_selected(world_path) else 'failed_empty_export'
 
 clear_selection()
 if hero is not None:
@@ -88,15 +114,24 @@ if hero is not None:
     except Exception:
         pass
 
+founder_size = founder_path.stat().st_size if founder_path.exists() else 0
+world_size = world_path.stat().st_size if world_path.exists() else 0
 manifest = {
     'generated_utc': datetime.now(timezone.utc).isoformat(),
     'preview_only': True,
     'hero_likeness_status': 'reference-guided final likeness still pending',
     'founder_status': founder_status,
     'founder_glb': str(founder_path),
+    'founder_glb_bytes': founder_size,
     'founder_object_count': len(character_objects),
+    'hero_object': hero.name if hero is not None else None,
+    'hero_bone_count': hero_bone_count,
+    'skinned_mesh_count': skinned_mesh_count,
+    'animation_action_count': len(all_action_names),
+    'animation_action_names': all_action_names,
     'world_status': world_status,
     'world_glb': str(world_path),
+    'world_glb_bytes': world_size,
     'world_object_count': len(world_objects),
     'next_step': 'copy preview GLBs into public/assets/models, run npm build, then npx cap sync android for phone preview',
 }
@@ -108,5 +143,8 @@ scene['sg_phone_preview_founder_glb'] = str(founder_path)
 scene['sg_phone_preview_world_glb'] = str(world_path)
 scene['sg_phone_preview_manifest'] = str(manifest_path)
 scene['sg_phone_preview_export_utc'] = manifest['generated_utc']
-print(f'[SUM GREATNESS] Phone preview exports: founder={founder_status}, world={world_status}')
+scene['sg_phone_preview_founder_bytes'] = founder_size
+scene['sg_phone_preview_action_count'] = len(all_action_names)
+print(f'[SUM GREATNESS] Phone preview exports: founder={founder_status} ({founder_size} bytes), world={world_status} ({world_size} bytes)')
+print(f'[SUM GREATNESS] Founder rig: bones={hero_bone_count}, skinned_meshes={skinned_mesh_count}, actions={len(all_action_names)}')
 print(f'[SUM GREATNESS] Preview export folder: {export_root}')
