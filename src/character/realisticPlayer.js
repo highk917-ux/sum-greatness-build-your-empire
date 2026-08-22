@@ -22,11 +22,22 @@ const CLIP_MATCHERS={
 };
 const LOOPING=new Set(['idle','walk','run','carry','talk']);
 
-function resolveModelUrl(){
- // document.baseURI works in Vite preview and in Capacitor's packaged WebView.
- // Avoid a root-only path so Android can resolve the bundled asset even when
- // the app is served from a non-root base URL.
- return new URL(MODEL_PATH,document.baseURI).href;
+function resolveModelUrls(explicitUrl){
+ const candidates=explicitUrl?[explicitUrl]:[
+  new URL(MODEL_PATH,document.baseURI).href,
+  new URL(`/${MODEL_PATH}`,window.location.origin).href
+ ];
+ return [...new Set(candidates)];
+}
+
+async function loadFounderModel(urls){
+ const loader=new GLTFLoader();
+ let lastError=null;
+ for(const url of urls){
+  try{return {gltf:await loader.loadAsync(url),modelUrl:url}}
+  catch(error){lastError=error;console.warn('[SUM GREATNESS] Founder GLB load attempt failed',{url,error})}
+ }
+ throw lastError||new Error('Founder GLB could not be loaded');
 }
 
 function findClip(animations,matchers=[]){
@@ -55,12 +66,23 @@ function animationReport(animations,clips){
  };
 }
 
-export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=resolveModelUrl()}={}){
+function normalizeAngle(angle){
+ return Math.atan2(Math.sin(angle),Math.cos(angle));
+}
+
+function emitStatus(detail){
+ window.dispatchEvent(new CustomEvent('sum-greatness:founder-status',{detail}));
+}
+
+export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl}={}){
  const fallbackChildren=[...player.children];
+ const modelUrls=resolveModelUrls(modelUrl);
  try{
-  // Load the packaged GLB directly. A HEAD preflight can fail inside Android
-  // WebView/Capacitor even when the same local asset is available to GET.
-  const gltf=await new GLTFLoader().loadAsync(modelUrl);
+  // Try both Capacitor-friendly relative and origin-root asset URLs before
+  // accepting the fallback. This avoids false failures caused by WebView base URLs.
+  const loaded=await loadFounderModel(modelUrls);
+  const {gltf}=loaded;
+  const resolvedModelUrl=loaded.modelUrl;
   const model=gltf.scene;
   const animations=gltf.animations||[];
   if(!model)throw new Error('Founder GLB did not contain a scene');
@@ -81,7 +103,7 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
   const mixer=animations.length?new THREE.AnimationMixer(model):null;
   const clips=Object.fromEntries(Object.entries(CLIP_MATCHERS).map(([name,matchers])=>[name,findClip(animations,matchers)]));
   const report=animationReport(animations,clips);
-  let currentAction=null,currentMotion='',lockedUntil=0,wasMoving=false;
+  let currentAction=null,currentMotion='',lockedUntil=0,wasMoving=false,previousYaw=player.rotation.y;
 
   function playState(name,{force=false,fade=.16,loop=LOOPING.has(name),clamp=true,allowFallback=true,timeScale=1}={}){
    if(!mixer)return false;
@@ -113,13 +135,16 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
   }
 
   playState('idle',{force:true});
-  console.info('[SUM GREATNESS] Founder GLB loaded',{modelUrl,rig,animations:report});
+  const status={loaded:true,modelUrl:resolvedModelUrl,rig,animations:report};
+  console.info('[SUM GREATNESS] Founder GLB loaded',status);
+  emitStatus(status);
   if(!rig.isRigged)console.warn('[SUM GREATNESS] Founder GLB is visible but not skinned/rigged; skeletal movement clips cannot deform it.',rig);
   if(report.missing.length)console.info('[SUM GREATNESS] Founder animation clips still needed',report.missing);
 
   return {
    model,
-   modelUrl,
+   modelUrl:resolvedModelUrl,
+   attemptedModelUrls:modelUrls,
    rig,
    animationReport:report,
    availableAnimations:report.mapped,
@@ -135,14 +160,18 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
     if(active&&!clips.carry)return false;
     return playState(active?'carry':'idle',{force:true,loop:true,allowFallback:!active});
    },
-   update(delta,{moving=false,running=false,turn=0}={}){
+   update(delta,{moving=false,running=false,turn=null}={}){
     const now=performance.now();
+    const yaw=player.rotation.y;
+    const inferredTurn=delta>0?normalizeAngle(yaw-previousYaw)/delta:0;
+    previousYaw=yaw;
+    const turnIntent=Number.isFinite(turn)?turn:THREE.MathUtils.clamp(inferredTurn/2.2,-1,1);
     if(now>=lockedUntil){
-     const turning=!moving&&Math.abs(turn)>.35;
+     const turning=!moving&&Math.abs(turnIntent)>.35;
      const justStopped=!moving&&wasMoving;
      if(justStopped&&clips.stop)playState('stop',{loop:false,allowFallback:false});
      else if(turning){
-      const turnState=turn<0?'turnLeft':'turnRight';
+      const turnState=turnIntent<0?'turnLeft':'turnRight';
       if(clips[turnState])playState(turnState,{loop:false,allowFallback:false});
       else playState('idle');
      }else playState(running?'run':moving?'walk':'idle');
@@ -152,6 +181,7 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
    },
    dispose(){
     mixer?.stopAllAction();
+    mixer?.uncacheRoot(model);
     player.remove(model);
     model.traverse(object=>{
      if(object.geometry?.dispose)object.geometry.dispose();
@@ -165,7 +195,9 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl=
   // Keep the existing approved fallback character visible until a valid rigged GLB
   // is exported into public/assets/models/sum-greatness-founder.glb.
   fallbackChildren.forEach(child=>child.visible=true);
-  console.warn('[SUM GREATNESS] Founder GLB unavailable; fallback remains active.',{modelUrl,error});
+  const status={loaded:false,attemptedModelUrls:modelUrls,error:String(error?.message||error)};
+  console.warn('[SUM GREATNESS] Founder GLB unavailable; fallback remains active.',status);
+  emitStatus(status);
   return null;
  }
 }
