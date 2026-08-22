@@ -1,26 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { animationCatalogReport,buildAnimationCatalog,LOOPING_ANIMATION_STATES } from './animationCatalog.js';
 
 const MODEL_PATH='assets/models/sum-greatness-founder.glb';
-const CLIP_MATCHERS={
- idle:[/idle/i,/breath/i,/stand/i],
- walk:[/walk/i],
- run:[/run/i,/jog/i,/sprint/i],
- stop:[/stop/i,/brake/i],
- turnLeft:[/turn.*left/i,/left.*turn/i],
- turnRight:[/turn.*right/i,/right.*turn/i],
- pickup:[/pick.?up/i,/lift/i,/grab/i],
- carry:[/carry/i,/hold/i],
- place:[/place/i,/put.?down/i,/drop/i],
- openDoor:[/open.*door/i,/door.*open/i],
- closeDoor:[/close.*door/i,/door.*close/i],
- enter:[/enter/i,/walk.*in/i],
- exit:[/exit/i,/walk.*out/i],
- wave:[/wave/i,/greet/i],
- talk:[/talk/i,/speak/i,/conversation/i],
- point:[/point/i,/gesture/i]
-};
-const LOOPING=new Set(['idle','walk','run','carry','talk']);
 
 function resolveModelUrls(explicitUrl){
  const candidates=explicitUrl?[explicitUrl]:[
@@ -40,10 +22,6 @@ async function loadFounderModel(urls){
  throw lastError||new Error('Founder GLB could not be loaded');
 }
 
-function findClip(animations,matchers=[]){
- return animations.find(clip=>matchers.some(rx=>rx.test(clip.name)));
-}
-
 function inspectRig(model){
  let skinnedMeshes=0,bones=0,meshes=0,vertices=0;
  model.traverse(object=>{
@@ -55,15 +33,6 @@ function inspectRig(model){
   if(object.isBone)bones++;
  });
  return {meshes,skinnedMeshes,bones,vertices,isRigged:skinnedMeshes>0&&bones>0};
-}
-
-function animationReport(animations,clips){
- return {
-  clipCount:animations.length,
-  names:animations.map(clip=>clip.name),
-  mapped:Object.fromEntries(Object.entries(clips).map(([name,clip])=>[name,clip?.name||null])),
-  missing:Object.keys(clips).filter(name=>!clips[name])
- };
 }
 
 function normalizeAngle(angle){
@@ -78,8 +47,6 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl}
  const fallbackChildren=[...player.children];
  const modelUrls=resolveModelUrls(modelUrl);
  try{
-  // Try both Capacitor-friendly relative and origin-root asset URLs before
-  // accepting the fallback. This avoids false failures caused by WebView base URLs.
   const loaded=await loadFounderModel(modelUrls);
   const {gltf}=loaded;
   const resolvedModelUrl=loaded.modelUrl;
@@ -96,16 +63,15 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl}
   model.rotation.y=Math.PI;
   model.traverse(object=>{if(object.isMesh){object.castShadow=!mobileDevice;object.receiveShadow=true;object.frustumCulled=true}});
 
-  // Hide the fallback only after the real GLB has fully loaded and passed sanity checks.
   fallbackChildren.forEach(child=>child.visible=false);
   player.add(model);
 
   const mixer=animations.length?new THREE.AnimationMixer(model):null;
-  const clips=Object.fromEntries(Object.entries(CLIP_MATCHERS).map(([name,matchers])=>[name,findClip(animations,matchers)]));
-  const report=animationReport(animations,clips);
+  const clips=buildAnimationCatalog(animations);
+  const report=animationCatalogReport(animations,clips);
   let currentAction=null,currentMotion='',lockedUntil=0,wasMoving=false,previousYaw=player.rotation.y;
 
-  function playState(name,{force=false,fade=.16,loop=LOOPING.has(name),clamp=true,allowFallback=true,timeScale=1}={}){
+  function playState(name,{force=false,fade=.16,loop=LOOPING_ANIMATION_STATES.has(name),clamp=true,allowFallback=true,timeScale=1}={}){
    if(!mixer)return false;
    const now=performance.now();
    if(!force&&now<lockedUntil)return false;
@@ -129,8 +95,6 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl}
   }
 
   function playInteraction(name,options={}){
-   // Interaction clips must be real named clips. Do not silently substitute idle,
-   // because that would make an unavailable pickup/door animation look successful.
    return playState(name,{force:true,loop:false,fade:.12,allowFallback:false,...options});
   }
 
@@ -192,8 +156,6 @@ export async function attachRealisticPlayer(player,{mobileDevice=false,modelUrl}
    }
   };
  }catch(error){
-  // Keep the existing approved fallback character visible until a valid rigged GLB
-  // is exported into public/assets/models/sum-greatness-founder.glb.
   fallbackChildren.forEach(child=>child.visible=true);
   const status={loaded:false,attemptedModelUrls:modelUrls,error:String(error?.message||error)};
   console.warn('[SUM GREATNESS] Founder GLB unavailable; fallback remains active.',status);
