@@ -1,6 +1,6 @@
 # SUM GREATNESS morning validation handoff
 
-Use this order so each failure points to one layer instead of mixing Blender, packaging, and Android problems.
+Use this order so each failure points to one layer instead of mixing Blender, packaging, Android, and gameplay problems.
 
 ## 1. Pull the development branch
 
@@ -52,6 +52,8 @@ powershell -ExecutionPolicy Bypass -File .\blender_bridge\automation\prepare_pho
 
 Do not continue until the script confirms the founder GLB at every packaging layer and the automated tests/build complete. The source, Vite `dist`, and Android asset copies should have matching SHA-256 hashes.
 
+The automated test run now also covers the standalone story progression and objective-tracking scaffolds. Those systems are intentionally not wired into the live gameplay loop until the founder/interaction foundation passes the physical-phone test.
+
 ## 4. Launch Android Studio
 
 Open the Android project from this same repository copy, not an older `C:\Projects\...` clone.
@@ -75,7 +77,18 @@ Run the app on the phone in landscape.
 13. NPC wave/talk/point gestures play when matching clips exist.
 14. Profile shows the selected avatar/style/outfit and does not invent a face/body likeness.
 
-## 6. What to report if something fails
+## 6. Story-system readiness after the interaction test passes
+
+No extra morning action is required yet. The branch now contains a detached mission progression system plus objective tracking for the first four foundation missions:
+
+- Welcome to San Diego: movement, camera rotation, approach an interactable.
+- Make an Introduction: NPC greeting/gesture.
+- First Delivery: pickup and place a package.
+- Open for Business: open a door and enter a business.
+
+Once steps 1-14 above pass on the phone, the next safe code milestone is wiring gameplay events from the movement, interaction director, doors/portals, and NPC gesture controller into those objective events. Until then, keeping the story layer detached avoids masking character/interaction bugs with mission logic.
+
+## 7. What to report if something fails
 
 Capture only the first failure in the sequence and include:
 
