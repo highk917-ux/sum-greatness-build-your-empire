@@ -2,7 +2,9 @@ name: Build
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - automation/character-interactions
 
 jobs:
   web:
@@ -14,6 +16,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm test
       - run: npm run build
 
   android:
@@ -31,6 +34,7 @@ jobs:
           cache: gradle
       - uses: android-actions/setup-android@v3
       - run: npm ci
+      - run: npm test
       - run: npm run build
       - run: npx cap sync android
       - run: chmod +x android/gradlew
