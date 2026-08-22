@@ -17,6 +17,7 @@ STAGES=[
     '20_san_diego_layout.py',
     '30_export_readiness.py',
     '40_character_fidelity_prepare.py',
+    '45_character_animation_audit.py',
     '50_world_geometry.py',
     '60_lighting_daynight.py',
     '70_gameplay_export_prep.py',
