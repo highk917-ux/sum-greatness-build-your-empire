@@ -6,22 +6,31 @@ export function createNpcGestureController({controller=null,onGesture=()=>{}}={}
 
  function canPlay(){return performance.now()>=lockedUntil}
 
- function play(name,{duration=1200,loop=false}={}){
-  if(!DEFAULT_GESTURES.includes(name)||!canPlay())return false;
+ function durationFor(name,fallback){
+  const seconds=controller?.getAnimationDuration?.(name);
+  return Number.isFinite(seconds)&&seconds>0?Math.round(seconds*1000):fallback;
+ }
+
+ function play(name,{duration,loop=false,force=false}={}){
+  if(!DEFAULT_GESTURES.includes(name)||(!force&&!canPlay()))return false;
+  const fallback=name==='talk'?1600:name==='wave'?1100:name==='point'?1000:500;
+  const resolvedDuration=duration??durationFor(name,fallback);
   const played=controller?.playGesture?.(name,{loop})??false;
+  if(!played){onGesture({name,played:false,reason:'clip-unavailable'});return false}
   current=name;
-  lockedUntil=performance.now()+Math.max(0,duration);
-  onGesture({name,played});
-  return played;
+  lockedUntil=loop?Infinity:performance.now()+Math.max(0,resolvedDuration);
+  onGesture({name,played:true,duration:resolvedDuration,loop});
+  return true;
  }
 
  return {
   get current(){return current},
   get busy(){return !canPlay()},
   setController(next){controller=next},
-  wave(options){return play('wave',{duration:1100,...options})},
-  talk(options){return play('talk',{duration:1600,loop:true,...options})},
-  point(options){return play('point',{duration:1000,...options})},
+  hasGesture(name){return DEFAULT_GESTURES.includes(name)&&Boolean(controller?.hasAnimation?.(name))},
+  wave(options){return play('wave',options)},
+  talk(options){return play('talk',{loop:true,...options})},
+  point(options){return play('point',options)},
   idle(){
    current='idle';
    lockedUntil=0;
@@ -32,8 +41,14 @@ export function createNpcGestureController({controller=null,onGesture=()=>{}}={}
   endConversation(){
    current='idle';
    lockedUntil=0;
-   controller?.playGesture?.('idle',{loop:true});
-   onGesture({name:'idle',played:true});
+   const played=controller?.playGesture?.('idle',{loop:true})??false;
+   onGesture({name:'idle',played});
+   return played;
+  },
+  cancel(){
+   current='idle';
+   lockedUntil=0;
+   return true;
   }
  };
 }
